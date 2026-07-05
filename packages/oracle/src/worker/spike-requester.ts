@@ -58,9 +58,11 @@ async function main() {
 
   const { negotiationId } = await transport.negotiateOrder({
     serviceId,
-    requirements: JSON.stringify({
-      question: "spike: does the CAP lifecycle clear end-to-end?",
-    }),
+    requirements:
+      process.env.CROO_SPIKE_REQUIREMENTS ??
+      JSON.stringify({
+        question: "spike: does the CAP lifecycle clear end-to-end?",
+      }),
   });
   consoleLogger.info("negotiation opened", { negotiationId, serviceId });
 
