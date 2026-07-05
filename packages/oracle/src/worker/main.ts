@@ -4,6 +4,8 @@ import { ProviderLoop } from "../core/provider-loop.js";
 import { createRegistry, type ServiceHandler } from "../core/service-registry.js";
 import { echoService } from "../core/services/echo.js";
 import { createForecastService } from "../core/services/forecast.js";
+import { createResearchService } from "../core/services/research.js";
+import { createSentimentService } from "../core/services/sentiment.js";
 import { parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock } from "../ports/runtime.js";
 
@@ -20,6 +22,8 @@ async function main() {
   const HANDLERS: Record<string, ServiceHandler> = {
     echo: echoService,
     forecast: createForecastService(hunch),
+    sentiment: createSentimentService(hunch),
+    research: createResearchService(hunch),
   };
 
   const services: Record<string, ServiceHandler> = {};
