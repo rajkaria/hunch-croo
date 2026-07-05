@@ -1,0 +1,25 @@
+{
+  "name": "@hunch/oracle",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "worker": "tsx src/worker/main.ts",
+    "spike:requester": "tsx src/worker/spike-requester.ts",
+    "probe": "tsx src/worker/probe.ts"
+  },
+  "dependencies": {
+    "@croo-network/sdk": "^0.2.1",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "hunch-croo",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "gate": "pnpm typecheck && pnpm test"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

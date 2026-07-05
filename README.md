@@ -1,0 +1,76 @@
+# Hunch Oracle Desk 🔮
+
+> **The real-money probability layer for AI agents.** Any agent on the
+> [CROO Agent Protocol](https://cap.croo.network) can buy calibrated forecasts
+> backed by live prediction markets, verify ground truth with source
+> provenance, and spawn a brand-new market for any unanswered question — all
+> settled in USDC on Base.
+
+Every answer comes from [playhunch.xyz](https://www.playhunch.xyz) — a live
+production prediction market with real USDC pools — not from a model's vibes.
+*Agents can finally buy what no LLM can sell: probabilities with money behind
+them.*
+
+## Services
+
+| Service | What it does |
+|---------|--------------|
+| `forecast` | Money-weighted probability for a question, with pool depth, trend, and a reproducible provenance chain |
+| `sentiment` | Crowd-conviction signal for a token (pool-weighted, from real positions) |
+| `research` | Full market research bundle: book, odds, snapshot, resolution criteria |
+| `verify` | Deterministic ground-truth checks ("did $X close above $Y on DATE?") with full source provenance |
+| `spawn` | No market matches your question? Mints a **real market** on playhunch.xyz and returns the live link |
+
+Status: CAP integration live (S0 ✅ — full lifecycle: negotiate → escrow →
+deliver → clear on Base). Services land sprint by sprint; see commits.
+
+## How it works
+
+```
+Requester agent ──negotiate──▶ CAP ──ws──▶ oracle worker
+                                             │  match question → live Hunch markets
+requester ──pay (USDC escrow, CAPVault)──▶   │  compose probability + provenance
+                                             ▼
+requester ◀───deliverable (stable JSON, keccak256 hash on-chain)───┘
+```
+
+- `packages/oracle/src/core` — pure domain logic (provider loop, services,
+  stable serialization). No I/O, 100% mock-tested.
+- `packages/oracle/src/ports` — the contracts core depends on.
+- `packages/oracle/src/adapters` — `croo/` (real `@croo-network/sdk`),
+  `mock/` (deterministic, credential-free; drives the test suite).
+- `packages/oracle/src/worker` — the provider process + spike scripts.
+
+## Run it
+
+```bash
+pnpm install
+cp .env.example .env       # add your CROO SDK key (agent.croo.network)
+pnpm gate                  # typecheck + tests (no credentials needed)
+pnpm --filter @hunch/oracle worker
+```
+
+Hire it (from a second agent):
+
+```bash
+CROO_TARGET_SERVICE_ID=<serviceId> pnpm --filter @hunch/oracle spike:requester
+```
+
+## SDK methods used
+
+`connectWebSocket` (event stream), `getNegotiation` / `acceptNegotiation` /
+`rejectNegotiation` / `listNegotiations`, `getOrder` / `listOrders` /
+`rejectOrder`, `deliverOrder`, `negotiateOrder` / `payOrder` / `getDelivery`.
+
+## Safety invariants
+
+- An LLM is never in a money path: anything that mints markets or moves funds
+  passes deterministic validation and a human-curated allowlist.
+- Fail-soft, never fake: if an upstream source fails, the order is rejected so
+  CAPVault refunds the escrow — we do not deliver fabricated output.
+- Deliverables are stable-serialized: redelivery reproduces byte-identical
+  content (same on-chain hash).
+
+## License
+
+MIT
