@@ -1,7 +1,9 @@
 import { CrooCapTransport } from "../adapters/croo/transport.js";
+import { HunchClient } from "../adapters/hunch/client.js";
 import { ProviderLoop } from "../core/provider-loop.js";
 import { createRegistry, type ServiceHandler } from "../core/service-registry.js";
 import { echoService } from "../core/services/echo.js";
+import { createForecastService } from "../core/services/forecast.js";
 import { parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock } from "../ports/runtime.js";
 
@@ -10,13 +12,15 @@ import { consoleLogger, systemClock } from "../ports/runtime.js";
  * S0: echo service behind ORACLE_ECHO_ALL=true (CAP lifecycle spike).
  * S1+: real services registered via ORACLE_SERVICE_MAP.
  */
-const HANDLERS: Record<string, ServiceHandler> = {
-  echo: echoService,
-};
-
 async function main() {
   const env = readEnv();
   const logger = consoleLogger;
+
+  const hunch = new HunchClient({ baseUrl: env.HUNCH_API_URL });
+  const HANDLERS: Record<string, ServiceHandler> = {
+    echo: echoService,
+    forecast: createForecastService(hunch),
+  };
 
   const services: Record<string, ServiceHandler> = {};
   for (const [serviceId, handlerName] of Object.entries(
