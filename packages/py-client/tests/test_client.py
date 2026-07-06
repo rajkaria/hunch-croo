@@ -143,6 +143,43 @@ class HireHappyPathTest(unittest.TestCase):
         result = client.hire("svc", {}, poll_s=5)
         self.assertEqual(result.deliverable, "not json {{")
 
+    def test_non_json_2xx_delivery_blip_keeps_polling(self):
+        # A transient 2xx with a non-JSON body must NOT crash hire() — the TS
+        # client swallows it and keeps polling. Here the 1st delivery read is an
+        # HTML blip (json.loads raises); the 2nd is the real deliverable.
+        transport = ScriptedTransport(
+            {
+                "POST /orders/negotiate": [(200, {"negotiationId": "neg-1"})],
+                "GET /orders": [(200, {"orders": [ACCEPTED_ORDER]}), (200, {"orders": [FINAL_ORDER]})],
+                "POST /orders/pay": [(200, "")],
+                "GET /orders/delivery": [
+                    (200, "<html>gateway blip</html>"),  # 2xx, not JSON
+                    (200, {"deliverableText": json.dumps({"ok": True})}),
+                ],
+            }
+        )
+        client, _ = make_client(transport)
+        result = client.hire("svc", {}, poll_s=5)
+        self.assertEqual(result.deliverable, {"ok": True})
+
+    def test_empty_text_with_schema_matches_ts_nullish_selection(self):
+        # {deliverableText: "", deliverableSchema: "SCHEMA"} → TS keeps the empty
+        # string (?? is nullish), so deliverable is "". Python must match (not
+        # fall through to the schema on the falsy empty string).
+        transport = ScriptedTransport(
+            {
+                "POST /orders/negotiate": [(200, {"negotiationId": "neg-1"})],
+                "GET /orders": [(200, {"orders": [ACCEPTED_ORDER]}), (200, {"orders": [FINAL_ORDER]})],
+                "POST /orders/pay": [(200, "")],
+                "GET /orders/delivery": [
+                    (200, {"deliverableText": "", "deliverableSchema": "SCHEMA"}),
+                ],
+            }
+        )
+        client, _ = make_client(transport)
+        result = client.hire("svc", {}, poll_s=5)
+        self.assertEqual(result.deliverable, "")
+
 
 class NegotiateTest(unittest.TestCase):
     def test_snake_case_negotiation_id_fallback(self):

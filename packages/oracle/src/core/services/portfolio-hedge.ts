@@ -490,12 +490,20 @@ function collectCorrelations(
       ]);
     }
   }
+  const marketSignatures = new Set<string>();
   for (const [key, legIndexes] of byMarket) {
-    if (legIndexes.length > 1) groups.push({ kind: "market", key, legIndexes });
+    if (legIndexes.length > 1) {
+      groups.push({ kind: "market", key, legIndexes });
+      marketSignatures.add(legIndexes.join(","));
+    }
   }
   for (const [key, legIndexes] of byToken) {
-    // Skip a token group that's identical to a single-market group already flagged.
-    if (legIndexes.length > 1) groups.push({ kind: "token", key, legIndexes });
+    // Skip a token group identical to a market group already flagged: same
+    // market ⇒ same token, so reporting both would double-count one correlation.
+    // A token shared ACROSS distinct markets is a different set → kept.
+    if (legIndexes.length > 1 && !marketSignatures.has(legIndexes.join(","))) {
+      groups.push({ kind: "token", key, legIndexes });
+    }
   }
   return groups;
 }

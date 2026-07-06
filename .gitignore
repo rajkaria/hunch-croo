@@ -12,3 +12,4 @@ dist/
 # misc
 .DS_Store
 coverage/
+.burn-rate/

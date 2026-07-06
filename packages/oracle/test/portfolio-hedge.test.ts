@@ -113,9 +113,49 @@ describe("portfolio-hedge service", () => {
       ],
     });
     const groups = payload.correlatedGroups as Array<Record<string, unknown>>;
+    // Exactly one group: same market ⇒ same token, so the token group is deduped
+    // (no double-counting one correlation as two).
+    expect(groups).toHaveLength(1);
     const marketGroup = groups.find((g) => g.kind === "market")!;
     expect(marketGroup).toBeTruthy();
     expect(marketGroup.legIndexes).toEqual([0, 1]);
+  });
+
+  it("keeps a token group that spans distinct markets (a real, separate correlation)", async () => {
+    // Two different markets whose token is the same → a genuine token-level
+    // correlation that is NOT subsumed by any single-market group.
+    const hunch = fixtureHunchApi();
+    const original = hunch.quote.bind(hunch);
+    // Re-tag ansem's market token to AIXBT so the two legs share a token but not
+    // a market — the token group must survive.
+    hunch.quote = (async (marketId: string) => {
+      const read = await original(marketId);
+      if (read.data.market.slug === "ansem-flip-pump") {
+        return {
+          ...read,
+          data: { ...read.data, market: { ...read.data.market, tokenSymbol: "AIXBT" } },
+        };
+      }
+      return read;
+    }) as typeof hunch.quote;
+    const svc = createPortfolioHedgeService(hunch, { maxStakeUsd: 50, maxLegStakeUsd: 10 });
+    const payload = await svc.handle({
+      order: fakeOrder({ serviceId: "svc-portfolio" }),
+      requirements: "",
+      input: {
+        positions: [
+          { marketSlug: "aixbt-50m", side: "yes", stakeUsd: 5 },
+          { marketSlug: "ansem-flip-pump", side: "no", stakeUsd: 5 },
+        ],
+      },
+      clock: frozenClock,
+    });
+    const groups = payload.correlatedGroups as Array<Record<string, unknown>>;
+    // No shared market (distinct slugs) → no market group; one token group [0,1].
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.kind).toBe("token");
+    expect(groups[0]!.key).toBe("AIXBT");
+    expect(groups[0]!.legIndexes).toEqual([0, 1]);
   });
 
   it("degrades one bad-quote leg to an error while the rest price (fail-soft)", async () => {

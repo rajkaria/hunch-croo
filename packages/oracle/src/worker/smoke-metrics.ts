@@ -127,7 +127,13 @@ async function main() {
     has('oracle_orders_delivered_by_service_total{listing="Hunch Oracle",service="forecast"} 3') &&
     has('oracle_orders_delivered_by_service_total{listing="Hunch Market Desk",service="spawn"} 1');
   const liveOk = has("oracle_up 1");
-  const scorecardOk = has("oracle_forecasts_total 3") && has(`oracle_forecasts_resolved ${swept.scored}`);
+  // Independent literals (NOT `swept.scored`, which would be self-referential):
+  // aixbt hit + sol-ath miss = 2 scored; eth-5k has no result queued → 1 pending.
+  const scorecardOk =
+    swept.scored === 2 &&
+    has("oracle_forecasts_total 3") &&
+    has("oracle_forecasts_resolved 2") &&
+    has("oracle_forecasts_pending 1");
 
   if (!revenueOk || !deliveredOk || !liveOk || !scorecardOk) {
     throw new Error(

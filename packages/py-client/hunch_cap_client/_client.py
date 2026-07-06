@@ -176,10 +176,20 @@ class CapClient:
                 raise CapError("timed out waiting for the delivery")
             try:
                 delivery = self.get_delivery(order["orderId"])
-            except CapError:
+            except Exception:  # noqa: BLE001 — mirror the TS client's `.catch(() => null)`:
+                # a transient blip (incl. a non-JSON 2xx body) is swallowed and
+                # the poll continues to the deadline, never aborting the hire.
                 delivery = {}
-            text = delivery.get("deliverableText") or delivery.get("deliverableSchema")
-            if text:
+            delivered_text = delivery.get("deliverableText")
+            delivered_schema = delivery.get("deliverableSchema")
+            if delivered_text or delivered_schema:
+                # Nullish selection, matching TS `deliverableText ?? deliverableSchema ?? ""`:
+                # an empty string is KEPT (not skipped for the schema).
+                text = (
+                    delivered_text
+                    if delivered_text is not None
+                    else (delivered_schema if delivered_schema is not None else "")
+                )
                 try:
                     parsed: Any = json.loads(text)
                 except (ValueError, TypeError):
