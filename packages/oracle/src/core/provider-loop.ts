@@ -5,11 +5,13 @@ import type {
   CapOrder,
   CapProviderTransport,
 } from "../ports/cap.js";
+import type { LedgerStore } from "../ports/ledger.js";
 import type { Clock, OracleLogger, Sleeper } from "../ports/runtime.js";
 import { systemSleeper } from "../ports/runtime.js";
 import type { ServiceRegistry } from "./service-registry.js";
 import { retry } from "./retry.js";
 import { stableStringify } from "./stable-json.js";
+import { extractForecastRecord } from "./track-record/record-from-forecast.js";
 
 /**
  * The provider loop: the one piece of orchestration between CAP and our
@@ -39,6 +41,13 @@ export interface ProviderLoopDeps {
   deliverRetries?: number;
   /** Base backoff (ms) for deliver retries (default: 250). */
   retryBaseMs?: number;
+  /**
+   * Optional track-record ledger. When set, each successfully delivered
+   * `forecast` is recorded for later scoring. Recording is ADVISORY: a ledger
+   * failure never fails a paid delivery (the money already moved), so the money
+   * path stays clean.
+   */
+  ledger?: LedgerStore;
 }
 
 export interface ProviderLoopStats {
@@ -69,6 +78,8 @@ export class ProviderLoop {
   private readonly retryBaseMs: number;
   private readonly inFlight = new Set<string>();
   private readonly delivered = new Set<string>();
+  /** Orders already written to the track record this process (dedup guard). */
+  private readonly recorded = new Set<string>();
   private readonly negotiationsInFlight = new Set<string>();
   private readonly acceptedNegotiations = new Set<string>();
   private connection: CapConnection | null = null;
@@ -356,18 +367,54 @@ export class ProviderLoop {
       }
       this.delivered.add(orderId);
       this.stats.ordersDelivered += 1;
+      const txHash =
+        outcome.kind === "delivered" ? (outcome.txHash ?? null) : null;
       logger.info(
         outcome.kind === "already"
           ? "order already completed on-chain (response was lost); counted once"
           : "order delivered",
-        {
-          orderId,
-          handler: handler.name,
-          txHash: outcome.kind === "delivered" ? (outcome.txHash ?? null) : null,
-        },
+        { orderId, handler: handler.name, txHash },
       );
+      // Advisory track record — after the delivery is confirmed, never before.
+      await this.record(order, payload, txHash);
     } finally {
       this.inFlight.delete(orderId);
+    }
+  }
+
+  /**
+   * Record a delivered forecast to the track record. Best-effort and strictly
+   * advisory: only forecasts are recorded, each order at most once per process,
+   * and any ledger error is logged and swallowed so it can NEVER fail a paid
+   * delivery. Cross-restart duplicates are harmless — the scorecard dedups by
+   * order to the latest entry.
+   */
+  private async record(
+    order: CapOrder,
+    payload: Record<string, unknown>,
+    txHash: string | null,
+  ): Promise<void> {
+    const { ledger, clock, logger } = this.deps;
+    if (!ledger || this.recorded.has(order.orderId)) return;
+    let draft;
+    try {
+      draft = extractForecastRecord(payload, order, txHash, clock);
+    } catch {
+      draft = null;
+    }
+    if (!draft) return;
+    try {
+      await ledger.append(draft);
+      this.recorded.add(order.orderId);
+      logger.info("forecast recorded to track record", {
+        orderId: order.orderId,
+        marketId: draft.marketId,
+      });
+    } catch (error) {
+      logger.warn("track-record append failed (delivery unaffected)", {
+        orderId: order.orderId,
+        error: String(error),
+      });
     }
   }
 }

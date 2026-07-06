@@ -22,6 +22,7 @@ them.*
 | `watch` | Monitoring order: delivers when odds cross a threshold or a market resolves — honest `no_trigger` at SLA |
 | `spawn` | No market matches your question? Mints a **real market** on playhunch.xyz and returns the live link |
 | `hedge-quote` | **Non-custodial** hedge plan for a position: side, size, payout, break-even + the executable trade call — you keep custody |
+| `scorecard` | The desk's **public, tamper-evident track record**: every forecast it sold, scored against real resolution — Brier, calibration, head hash to pin |
 
 Status: CAP integration live (S0 ✅ — full lifecycle: negotiate → escrow →
 deliver → clear on Base). Services land sprint by sprint; see commits.
@@ -54,6 +55,22 @@ The LLM never sizes it either: a deterministic per-order cap does, and the desk
 never claims an edge over a book that already *is* its probability. See
 [docs/HEDGE-QUOTE.md](docs/HEDGE-QUOTE.md); demo it credential-free with
 `pnpm --filter @hunch/oracle smoke:hedge-quote`.
+
+## The desk you can audit
+
+An LLM can *claim* calibration. This desk lets you check it. Every `forecast` it
+sells is recorded to an **append-only, hash-chained ledger** the instant its CAP
+delivery confirms, then scored against the market's **real resolution** — the
+same production resolver `verify` reads. The `scorecard` service publishes the
+aggregate: Brier score, log-loss, a calibration table (predicted vs observed per
+bucket), and the **ledger head hash** you can pin to prove the record wasn't
+edited later. Only *resolved* markets count toward the score — pending ones are
+listed but never inflate the numbers. Recording is **advisory**: a ledger
+failure can never fail a paid delivery, so the money path stays clean; and the
+whole thing is **opt-in** (`ORACLE_LEDGER_PATH`), strictly additive to the
+existing desk. See [docs/SCORECARD.md](docs/SCORECARD.md); watch the full
+flywheel run credential-free with `pnpm --filter @hunch/oracle smoke:scorecard`,
+and browse the public page at `/scorecard`.
 
 ## Bidirectional — the desk hires, too
 

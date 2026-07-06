@@ -41,6 +41,17 @@ const EnvSchema = z.object({
   ORACLE_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   /** If set, expose a JSON /healthz + /status server on this port. */
   ORACLE_HEALTH_PORT: z.coerce.number().int().positive().optional(),
+
+  // ── S11 track-record scorecard ───────────────────────────────────────────
+  /**
+   * If set, enables the forecast track record: delivered forecasts are appended
+   * to this append-only JSONL ledger, the `scorecard` service is served, and a
+   * periodic settle sweep scores resolved markets. Unset → the desk behaves
+   * exactly as before (no recording), so S11 is strictly additive.
+   */
+  ORACLE_LEDGER_PATH: z.string().optional(),
+  /** How often (ms) to score resolved forecasts against the live resolver. */
+  ORACLE_SETTLE_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
   /**
    * Deterministic per-order cap (USD) on the stake a `hedge-quote` plan may
    * recommend. The LLM never sizes a hedge — this cap does; over-cap requests
