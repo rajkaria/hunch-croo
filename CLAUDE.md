@@ -14,7 +14,15 @@ ports/adapters/core, mock-tested), `packages/client` (npm CAP client), `apps/web
 | Doc | Covers |
 |-----|--------|
 | [docs/context/track-record-scorecard.md](docs/context/track-record-scorecard.md) | S11 track-record scorecard: forecast ledger (hash-chained), scoring (Brier/calibration), settle sweep, `scorecard` service, `/scorecard` web page |
+| [docs/context/observability.md](docs/context/observability.md) | S12 observability: dependency-free Prometheus `/metrics` (`core/metrics/**`), booked-revenue accounting, per-service delivery counter, `/metrics` web page |
+| [docs/context/portfolio-hedge.md](docs/context/portfolio-hedge.md) | S13 portfolio-hedge: shared `core/hedge/leg.ts` `priceLeg`, deterministic allocator, `portfolio-hedge` service + correlation flag (also covers `hedge-quote.ts`) |
+| [docs/context/py-client.md](docs/context/py-client.md) | S14 Python SDK: `packages/py-client` (zero-dep stdlib CAP client), unittest suite, CI `py-client` job |
 
-Sprint history (S0–S11) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
-SIGNAL-BUYER, LISTINGS, SCORECARD). Roadmap: S12 observability, S13 portfolio
-hedge, S14 Python SDK.
+Sprint history (S0–S14) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
+SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
+Roadmap **S11→S14 complete** (built 2026-07-06); no S15 defined — a "continue"
+next session needs a fresh brainstorm.
+
+Branch topology: `main` is at S10; S11 lives on `claude/stoic-carson-602b4d`
+(unmerged); S11→S14 live on `claude/reverent-shirley-ac533f` (unmerged). Merging
+to `main` is a pending human step.
