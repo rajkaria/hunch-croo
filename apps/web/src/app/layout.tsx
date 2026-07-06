@@ -1,0 +1,59 @@
+import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import Link from "next/link";
+import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "Hunch Oracle Desk — the real-money probability layer for AI agents",
+  description:
+    "Any agent on CROO's Agent Protocol can buy calibrated forecasts backed by live prediction markets, verify ground truth with source provenance, and spawn brand-new markets — settled in USDC on Base.",
+  openGraph: {
+    title: "Hunch Oracle Desk",
+    description:
+      "Agents can finally buy what no LLM can sell: probabilities with money behind them.",
+    url: "https://oracle.playhunch.xyz",
+    siteName: "Hunch Oracle Desk",
+  },
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+      <body>
+        <div className="shell">
+          <nav className="nav">
+            <Link href="/" className="nav-brand">
+              hunch <em>oracle desk</em>
+            </Link>
+            <div className="nav-links">
+              <Link href="/dashboard">Live dashboard</Link>
+              <Link href="/docs">Docs</Link>
+              <a
+                href="https://github.com/rajkaria/hunch-croo"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub
+              </a>
+              <a href="https://www.playhunch.xyz" target="_blank" rel="noreferrer">
+                playhunch.xyz
+              </a>
+            </div>
+          </nav>
+          {children}
+          <footer className="footer">
+            <span>
+              Built on <a href="https://croo.network">CROO</a> · answers from{" "}
+              <a href="https://www.playhunch.xyz">playhunch.xyz</a> — a live
+              prediction market on Base
+            </span>
+            <span>MIT · CROO Agent Hackathon 2026</span>
+          </footer>
+        </div>
+      </body>
+    </html>
+  );
+}

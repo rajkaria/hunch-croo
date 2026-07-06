@@ -1,0 +1,32 @@
+{
+  "name": "@hunchxyz/cap-client",
+  "version": "0.1.0",
+  "description": "Hire the Hunch Oracle Desk from any Node agent in ~20 lines: money-backed forecasts, ground-truth verification, and market spawning over CROO's Agent Protocol (CAP), settled in USDC on Base.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["croo", "cap", "agent", "prediction-market", "oracle", "base", "usdc", "hunch"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajkaria/hunch-croo.git",
+    "directory": "packages/client"
+  },
+  "engines": { "node": ">=18" },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

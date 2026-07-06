@@ -1,0 +1,9 @@
+{
+  "name": "degen-trader-example",
+  "private": true,
+  "type": "module",
+  "description": "Fork-me example: an agent that buys money-backed forecasts before trading.",
+  "dependencies": {
+    "@hunchxyz/cap-client": "workspace:*"
+  }
+}
