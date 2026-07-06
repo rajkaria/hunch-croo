@@ -1,6 +1,7 @@
 import {
   basescanTx,
   fetchCompletedOrders,
+  fetchHiredOrders,
   fetchPlatformStats,
   fetchPublicAgent,
   ownAgentIds,
@@ -27,16 +28,25 @@ function shortId(id: string): string {
 }
 
 export default async function DashboardPage() {
-  const [agents, platform, orders, spawned] = await Promise.all([
+  const [agents, platform, orders, spawned, hired] = await Promise.all([
     Promise.all(AGENT_IDS.map(fetchPublicAgent)),
     fetchPlatformStats(),
     fetchCompletedOrders(),
     fetchSpawnedMarkets(),
+    fetchHiredOrders(),
   ]);
   const liveAgents = agents.filter(Boolean) as NonNullable<
     Awaited<ReturnType<typeof fetchPublicAgent>>
   >[];
   const own = ownAgentIds();
+
+  // "Who we hired" (S8): completed orders where we are the requester. The
+  // counterparty is the provider agent we paid — external ones are agents whose
+  // counterparty count we seeded.
+  const hiredSpendUsd = hired.reduce((sum, o) => sum + usdcToNumber(o.amount), 0);
+  const externalCounterparties = new Set(
+    hired.map((o) => o.providerAgentId).filter((id) => id && !own.has(id)),
+  );
 
   const earnedUsd = liveAgents.reduce(
     (sum, agent) => sum + usdcToNumber(agent.totalEarned),
@@ -203,6 +213,80 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+        )}
+      </section>
+
+      <section className="section">
+        <h2>Who we hired</h2>
+        <p className="lead">
+          The desk runs both ways. Our signal-buyer hires external CAP agents —
+          real USDC out, on the same Base rails — and folds their (advisory-only)
+          signals into our own reads. Every hire below seeds another agent&apos;s
+          counterparty count: composability, paid for.
+        </p>
+        {hired.length === 0 ? (
+          <div className="card">
+            <p>
+              No hires settled yet. The signal-buyer runs behind a human-curated
+              allowlist and a hard daily budget cap; hires appear here the moment
+              one clears, read from CROO&apos;s order API with our requester key.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p style={{ marginBottom: 16 }}>
+              <span className="pill green">
+                {externalCounterparties.size} external counterparties
+              </span>{" "}
+              <span className="pill dim">${hiredSpendUsd.toFixed(2)} paid out</span>{" "}
+              <span className="pill dim">{hired.length} orders</span>
+            </p>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Hired agent</th>
+                    <th>Paid</th>
+                    <th>Settlement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hired.slice(0, 25).map((order) => (
+                    <tr key={order.orderId}>
+                      <td className="mono">
+                        #{order.chainOrderId || shortId(order.orderId)}
+                      </td>
+                      <td className="mono">
+                        {shortId(order.providerAgentId)}{" "}
+                        {own.has(order.providerAgentId) ? (
+                          <span className="pill amber">self</span>
+                        ) : (
+                          <span className="pill green">external</span>
+                        )}
+                      </td>
+                      <td className="mono">
+                        ${usdcToNumber(order.amount).toFixed(2)}
+                      </td>
+                      <td className="mono">
+                        {order.clearTxHash ? (
+                          <a
+                            href={basescanTx(order.clearTxHash)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {shortHash(order.clearTxHash)}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 

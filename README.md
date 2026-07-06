@@ -41,6 +41,19 @@ requester ◀───deliverable (stable JSON, keccak256 hash on-chain)──�
   `mock/` (deterministic, credential-free; drives the test suite).
 - `packages/oracle/src/worker` — the provider process + spike scripts.
 
+## Bidirectional — the desk hires, too
+
+The desk isn't only a seller. Its **signal-buyer** hires external CAP research
+agents, folds their *advisory-only* signals into its own reads, and settles in
+USDC on Base — the A2A story most agents won't have. Buying is a money path, so
+it's gated exactly like the market factory: a human-curated allowlist and hard
+per-order / per-day / per-counterparty budget caps, checked against the
+counterparty's *real* quoted price so no one can quote us into overspend — plus
+an advisory-never-authority rule (a purchased signal can inform but never
+override the desk's risk policy). Every hire also seeds another agent's
+counterparty count. See [docs/SIGNAL-BUYER.md](docs/SIGNAL-BUYER.md); demo it
+credential-free with `pnpm --filter @hunch/oracle smoke:signal-buyer`.
+
 ## Run it
 
 ```bash

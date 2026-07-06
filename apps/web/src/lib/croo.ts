@@ -20,6 +20,16 @@ export function providerKeys(): string[] {
     .filter(Boolean);
 }
 
+/** Our requester agent(s) — the signal-buyer side that HIRES external agents. */
+export function requesterKeys(): string[] {
+  const raw =
+    process.env.CROO_REQUESTER_KEYS ?? process.env.CROO_REQUESTER_SDK_KEY ?? "";
+  return raw
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
 /** Wallets/agents we operate ourselves — marked on the dashboard for anti-sybil transparency. */
 export function ownAgentIds(): Set<string> {
   const raw =
@@ -99,6 +109,26 @@ export async function fetchCompletedOrders(): Promise<CrooOrder[]> {
   for (const key of keys) {
     const body = await get<{ orders: CrooOrder[] }>(
       `/backend/v1/orders?role=provider&status=completed&page_size=50`,
+      key,
+    );
+    if (body?.orders) all.push(...body.orders);
+  }
+  return all.sort(
+    (a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""),
+  );
+}
+
+/**
+ * All completed orders where WE are the requester — the on-chain-verifiable
+ * "who we hired" feed (S8 signal-buyer). Every row is real USDC we paid an
+ * external agent, seeding THEIR counterparty count as we build ours.
+ */
+export async function fetchHiredOrders(): Promise<CrooOrder[]> {
+  const keys = requesterKeys();
+  const all: CrooOrder[] = [];
+  for (const key of keys) {
+    const body = await get<{ orders: CrooOrder[] }>(
+      `/backend/v1/orders?role=requester&status=completed&page_size=50`,
       key,
     );
     if (body?.orders) all.push(...body.orders);

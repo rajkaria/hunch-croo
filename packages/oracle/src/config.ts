@@ -2,6 +2,11 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
 import { z } from "zod";
+import {
+  AllowlistEntrySchema,
+  type AllowlistEntry,
+  type BuyerBudget,
+} from "./core/signal-buyer/policy.js";
 
 /** Load .env from the package dir and the repo root (first hit wins per key). */
 export function loadEnv(): void {
@@ -26,6 +31,20 @@ const EnvSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v === "true"),
+
+  // ── Signal-buyer (S8): the requester side ────────────────────────────────
+  /** Requester agent key (an agent cannot hire itself → separate from CROO_SDK_KEY). */
+  CROO_REQUESTER_SDK_KEY: z.string().startsWith("croo_sk_").optional(),
+  /** Master switch: without it the buyer only ever dry-runs (moves no money). */
+  SIGNAL_BUYER_ENABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+  /** JSON array of human-curated {serviceId,label,category?,maxPriceUsd?,...}. */
+  SIGNAL_BUYER_ALLOWLIST: z.string().default("[]"),
+  SIGNAL_BUYER_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
+  SIGNAL_BUYER_MAX_PRICE_USD: z.coerce.number().positive().default(1),
+  SIGNAL_BUYER_PER_SERVICE_CAP_USD: z.coerce.number().positive().optional(),
 });
 
 export type OracleEnv = z.infer<typeof EnvSchema>;
@@ -39,4 +58,21 @@ export function parseServiceMap(raw: string): Record<string, string> {
   const parsed: unknown = JSON.parse(raw);
   const out = z.record(z.string()).parse(parsed);
   return out;
+}
+
+/** Parse + validate the human-curated signal-buyer allowlist. */
+export function parseAllowlist(raw: string): AllowlistEntry[] {
+  const parsed: unknown = JSON.parse(raw);
+  return z.array(AllowlistEntrySchema).parse(parsed);
+}
+
+/** Build the buyer budget from env (per-service cap is optional). */
+export function buyerBudgetFromEnv(env: OracleEnv): BuyerBudget {
+  return {
+    dailyCapUsd: env.SIGNAL_BUYER_DAILY_CAP_USD,
+    maxPriceUsd: env.SIGNAL_BUYER_MAX_PRICE_USD,
+    ...(env.SIGNAL_BUYER_PER_SERVICE_CAP_USD !== undefined
+      ? { perServiceDailyCapUsd: env.SIGNAL_BUYER_PER_SERVICE_CAP_USD }
+      : {}),
+  };
 }

@@ -75,13 +75,20 @@ export interface CapProviderTransport {
   rejectOrder(orderId: string, reason: string): Promise<void>;
 }
 
-/** Requester-side transport (the spike script + the future signal-buyer). */
+/** Requester-side transport (the spike script + the signal-buyer). */
 export interface CapRequesterTransport {
   connect(onEvent: (event: CapEvent) => void): Promise<CapConnection>;
   negotiateOrder(req: {
     serviceId: string;
     requirements?: string;
   }): Promise<{ negotiationId: string }>;
+  /** Read the order the counterparty created — carries the REAL negotiated
+   * price, which the signal-buyer's pay-gate checks against its budget before
+   * a single dollar of escrow moves. */
+  getOrder(orderId: string): Promise<CapOrder>;
   payOrder(orderId: string): Promise<{ txHash: string }>;
+  /** Decline a created-but-unpaid order (over budget / policy) — no escrow,
+   * no money moved. Mirrors the provider's rejectOrder. */
+  rejectOrder(orderId: string, reason: string): Promise<void>;
   getDelivery(orderId: string): Promise<{ text?: string; schema?: string }>;
 }
