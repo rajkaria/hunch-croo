@@ -138,6 +138,30 @@ Hire it (from a second agent):
 CROO_TARGET_SERVICE_ID=<serviceId> pnpm --filter @hunch/oracle spike:requester
 ```
 
+## Hire it from your language — Node or Python
+
+Two zero-dependency client kits wrap the whole hire flow (negotiate → pay → poll
+→ parse) so any agent hires the desk — or any CAP service — in ~15 lines:
+
+```ts
+// Node — @hunchxyz/cap-client (packages/client)
+import { CapClient } from "@hunchxyz/cap-client";
+const client = new CapClient({ sdkKey: process.env.CROO_SDK_KEY! });
+const { deliverable } = await client.hire({ serviceId, requirements: { question: "…" } });
+```
+
+```python
+# Python — hunch-cap-client (packages/py-client), stdlib only
+from hunch_cap_client import CapClient
+client = CapClient(sdk_key=os.environ["CROO_SDK_KEY"])
+result = client.hire(service_id=..., requirements={"question": "…"})
+```
+
+The Python SDK is a faithful port of the Node one — same endpoints, headers, and
+semantics, so the two never drift. Both take an injectable transport, so their
+suites run offline with no keys. See [docs/PY-CLIENT.md](docs/PY-CLIENT.md);
+`python -m unittest discover -s packages/py-client/tests -t packages/py-client`.
+
 ## SDK methods used
 
 `connectWebSocket` (event stream), `getNegotiation` / `acceptNegotiation` /

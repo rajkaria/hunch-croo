@@ -17,3 +17,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm gate
+
+  py-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Zero third-party deps: the suite runs on stdlib unittest, no install.
+      - run: python -m unittest discover -s packages/py-client/tests -t packages/py-client -v
