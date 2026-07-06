@@ -6,10 +6,19 @@ import type {
   CapProviderTransport,
 } from "../../ports/cap.js";
 
+/** A deliver fault the chaos suite can script (see {@link MockCapTransport.failDelivers}).
+ *  - "throw-before": fail without touching state (pure transient blip).
+ *  - "throw-after":  apply the state change (order → completed on-chain) THEN
+ *    throw — models the tx landing but the response being lost, so a restarted
+ *    worker must NOT re-deliver. */
+export type DeliverFault = "throw-before" | "throw-after";
+
 /**
  * Deterministic, credential-free in-memory CAP — drives the whole test suite.
  * Test code scripts the requester side (createNegotiation / payOrder) and
- * asserts on provider behavior (accepted / rejected / delivered).
+ * asserts on provider behavior (accepted / rejected / delivered). The chaos
+ * hooks (failDelivers, slaDeadline, replayPaid) let the hardening suite inject
+ * the failure modes S10 must survive.
  */
 export class MockCapTransport implements CapProviderTransport {
   private negotiations = new Map<string, CapNegotiation>();
@@ -19,6 +28,44 @@ export class MockCapTransport implements CapProviderTransport {
   readonly rejectedOrders = new Map<string, string>();
   private listener: ((event: CapEvent) => void) | null = null;
   private seq = 0;
+  /** SLA deadline to stamp onto the order minted from a given negotiation. */
+  private slaByNegotiation = new Map<string, string>();
+  /** Queue of deliver faults, consumed one per deliverOrder call. */
+  private deliverFaults: DeliverFault[] = [];
+  /** Count of deliverOrder calls that actually moved the order to completed. */
+  deliverAttempts = 0;
+
+  /** Chaos: the next `count` deliverOrder calls fail with `mode`. */
+  failDelivers(count: number, mode: DeliverFault): void {
+    for (let i = 0; i < count; i += 1) this.deliverFaults.push(mode);
+  }
+
+  /** Chaos: re-emit an order_paid for an order (WS reconnect / duplicate event). */
+  replayPaid(orderId: string): void {
+    this.emit({ type: "order_paid", orderId, raw: {} });
+  }
+
+  /** Fuzz: inject an arbitrary (possibly malformed) event straight at the loop. */
+  injectRawEvent(event: CapEvent): void {
+    this.emit(event);
+  }
+
+  /** Test helper: orders created but not yet paid. */
+  listCreatedOrders(): CapOrder[] {
+    return [...this.orders.values()].filter((o) => o.status === "created");
+  }
+
+  /** Chaos: re-emit a negotiation_created (WS reconnect / duplicate event). */
+  replayNegotiationCreated(negotiationId: string): void {
+    const negotiation = this.negotiations.get(negotiationId);
+    if (!negotiation) throw new Error(`mock: unknown negotiation ${negotiationId}`);
+    this.emit({
+      type: "negotiation_created",
+      negotiationId,
+      serviceId: negotiation.serviceId,
+      raw: {},
+    });
+  }
 
   async connect(onEvent: (event: CapEvent) => void) {
     this.listener = onEvent;
@@ -34,6 +81,8 @@ export class MockCapTransport implements CapProviderTransport {
     serviceId: string;
     requirements?: string;
     fundAmount?: string;
+    /** Chaos: SLA deadline stamped on the order this negotiation mints. */
+    slaDeadline?: string;
   }): CapNegotiation {
     const negotiationId = `neg-${++this.seq}`;
     const negotiation: CapNegotiation = {
@@ -45,6 +94,8 @@ export class MockCapTransport implements CapProviderTransport {
         ? { fundAmount: input.fundAmount }
         : {}),
     };
+    if (input.slaDeadline !== undefined)
+      this.slaByNegotiation.set(negotiationId, input.slaDeadline);
     this.negotiations.set(negotiationId, negotiation);
     this.emit({
       type: "negotiation_created",
@@ -78,6 +129,7 @@ export class MockCapTransport implements CapProviderTransport {
       throw new Error(`mock: accept in state ${negotiation.status}`);
     negotiation.status = "accepted";
     const orderId = `order-${++this.seq}`;
+    const sla = this.slaByNegotiation.get(negotiationId);
     this.orders.set(orderId, {
       orderId,
       negotiationId,
@@ -86,6 +138,7 @@ export class MockCapTransport implements CapProviderTransport {
       price: "0.10",
       paymentToken: "USDC",
       status: "created",
+      ...(sla !== undefined ? { slaDeadline: sla } : {}),
     });
     this.emit({ type: "order_created", orderId, raw: {} });
     return { orderId };
@@ -119,10 +172,16 @@ export class MockCapTransport implements CapProviderTransport {
       throw new Error(`mock: deliver in state ${order.status}`);
     if (this.deliveries.has(orderId))
       throw new Error(`mock: duplicate delivery for ${orderId}`);
+    const fault = this.deliverFaults.shift();
+    if (fault === "throw-before")
+      throw new Error(`mock: injected transient deliver failure for ${orderId}`);
+    this.deliverAttempts += 1;
     order.status = "completed";
     order.clearTxHash = `0xclear${orderId}`;
     this.deliveries.set(orderId, deliverable);
     this.emit({ type: "order_completed", orderId, raw: {} });
+    if (fault === "throw-after")
+      throw new Error(`mock: deliver landed but response lost for ${orderId}`);
     return { txHash: order.clearTxHash };
   }
 

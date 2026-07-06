@@ -77,6 +77,11 @@ pnpm gate                  # typecheck + tests (no credentials needed)
 pnpm --filter @hunch/oracle worker
 ```
 
+Watch it survive a bad day (credential-free): `pnpm --filter @hunch/oracle
+smoke:hardening` runs the desk through `kill -9` mid-order, transient deliver
+failures, reconnect storms, and SLA expiry — asserting no double delivery and no
+stuck escrow — then curls the `/status` page.
+
 Hire it (from a second agent):
 
 ```bash
@@ -97,6 +102,19 @@ CROO_TARGET_SERVICE_ID=<serviceId> pnpm --filter @hunch/oracle spike:requester
   CAPVault refunds the escrow — we do not deliver fabricated output.
 - Deliverables are stable-serialized: redelivery reproduces byte-identical
   content (same on-chain hash).
+
+## Hardened for a bad day
+
+The provider loop is built to survive real infrastructure: WS reconnect storms,
+duplicate events, transient deliver failures, SLA expiry mid-work, reject-at-paid
+refunds, and `kill -9` mid-order. The rule that makes recovery trivial is that
+**the CAP order status — never in-memory state — is the source of truth**, so a
+crashed worker recovers cleanly on restart via a startup sweep: delivered exactly
+once, no double delivery, no stuck escrow. Transient blips get bounded retry with
+backoff; anything still failing is deferred to a periodic sweep. Secrets are
+redacted at every log boundary, and `ORACLE_HEALTH_PORT` exposes a `/status`
+liveness page. It's all proven by a credential-free chaos + fuzz suite — see
+[docs/HARDENING.md](docs/HARDENING.md).
 
 ## License
 

@@ -17,7 +17,7 @@ import type {
   CapProviderTransport,
   CapRequesterTransport,
 } from "../../ports/cap.js";
-import type { OracleLogger } from "../../ports/runtime.js";
+import { redactSecrets, type OracleLogger } from "../../ports/runtime.js";
 
 const EVENT_MAP: Record<string, CapEventType> = {
   [EventType.NegotiationCreated]: "negotiation_created",
@@ -90,24 +90,7 @@ export class CrooCapTransport
   constructor(options: CrooTransportOptions) {
     // Route SDK logs through a redacting logger — the SDK's default console
     // logger prints the WS URL including the `croo_sk_` key.
-    const redact = (value: unknown): unknown => {
-      if (typeof value === "string") {
-        return value.replace(/croo_sk_[a-zA-Z0-9]+/g, "croo_sk_***");
-      }
-      if (value && typeof value === "object") {
-        try {
-          return JSON.parse(
-            JSON.stringify(value).replace(
-              /croo_sk_[a-zA-Z0-9]+/g,
-              "croo_sk_***",
-            ),
-          ) as unknown;
-        } catch {
-          return "[unserializable]";
-        }
-      }
-      return value;
-    };
+    const redact = (v: unknown) => redactSecrets(v);
     const sdkLogger = {
       info: (m: string, ...args: unknown[]) =>
         options.logger.info(String(redact(m)), { args: args.map(redact) }),

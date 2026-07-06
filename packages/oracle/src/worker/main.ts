@@ -12,6 +12,7 @@ import { createVerifyService } from "../core/services/verify.js";
 import { createWatchService } from "../core/services/watch.js";
 import { parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock, systemSleeper } from "../ports/runtime.js";
+import { startHealthServer } from "./health-server.js";
 
 /**
  * The Hunch Oracle Desk provider worker.
@@ -62,24 +63,39 @@ async function main() {
     registry,
     clock: systemClock,
     logger,
+    sleeper: systemSleeper,
+    deliverRetries: env.ORACLE_DELIVER_RETRIES,
+    retryBaseMs: env.ORACLE_RETRY_BASE_MS,
   });
 
   await loop.start();
   logger.info("hunch-oracle worker online", {
     echoAll: env.ORACLE_ECHO_ALL,
     mappedServices: Object.keys(services).length,
+    deliverRetries: env.ORACLE_DELIVER_RETRIES,
   });
 
+  // Optional status page for uptime checks / judges (curl :PORT/status).
+  const healthServer =
+    env.ORACLE_HEALTH_PORT !== undefined
+      ? startHealthServer(loop, env.ORACLE_HEALTH_PORT, logger)
+      : null;
+
+  // periodic sweep as a WS-drop / missed-event safety net
+  const sweepTimer = setInterval(
+    () => void loop.sweep(),
+    env.ORACLE_SWEEP_INTERVAL_MS,
+  );
+
   const shutdown = () => {
+    clearInterval(sweepTimer);
+    healthServer?.close();
     loop.stop();
     logger.info("final stats", { ...loop.stats });
     process.exit(0);
   };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
-
-  // periodic sweep as a WS-drop safety net
-  setInterval(() => void loop.sweep(), 60_000);
 }
 
 main().catch((error) => {

@@ -31,6 +31,16 @@ const EnvSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v === "true"),
+
+  // ── S10 hardening knobs ──────────────────────────────────────────────────
+  /** Bounded retries for a transient deliver failure before deferring to the sweep. */
+  ORACLE_DELIVER_RETRIES: z.coerce.number().int().nonnegative().default(3),
+  /** Base backoff (ms) between deliver retries (exponential). */
+  ORACLE_RETRY_BASE_MS: z.coerce.number().int().positive().default(250),
+  /** How often (ms) to run the WS-drop safety-net sweep. */
+  ORACLE_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  /** If set, expose a JSON /healthz + /status server on this port. */
+  ORACLE_HEALTH_PORT: z.coerce.number().int().positive().optional(),
   /**
    * Deterministic per-order cap (USD) on the stake a `hedge-quote` plan may
    * recommend. The LLM never sizes a hedge — this cap does; over-cap requests

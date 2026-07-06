@@ -5,8 +5,10 @@ import type {
   CapOrder,
   CapProviderTransport,
 } from "../ports/cap.js";
-import type { Clock, OracleLogger } from "../ports/runtime.js";
+import type { Clock, OracleLogger, Sleeper } from "../ports/runtime.js";
+import { systemSleeper } from "../ports/runtime.js";
 import type { ServiceRegistry } from "./service-registry.js";
+import { retry } from "./retry.js";
 import { stableStringify } from "./stable-json.js";
 
 /**
@@ -31,6 +33,12 @@ export interface ProviderLoopDeps {
   registry: ServiceRegistry;
   clock: Clock;
   logger: OracleLogger;
+  /** Backoff sleeper for transient-failure retries (default: real timers). */
+  sleeper?: Sleeper;
+  /** How many times to retry a transient deliver failure (default: 3). */
+  deliverRetries?: number;
+  /** Base backoff (ms) for deliver retries (default: 250). */
+  retryBaseMs?: number;
 }
 
 export interface ProviderLoopStats {
@@ -38,28 +46,62 @@ export interface ProviderLoopStats {
   negotiationsRejected: number;
   ordersDelivered: number;
   ordersRejected: number;
+  /** Paid orders skipped because their SLA deadline had already passed. */
+  ordersSkippedSla: number;
   errors: number;
+}
+
+/** A point-in-time liveness snapshot — the payload behind the status page. */
+export interface ProviderLoopHealth {
+  status: "starting" | "ok" | "stopped";
+  connected: boolean;
+  startedAt: string | null;
+  lastEventAt: string | null;
+  lastSweepAt: string | null;
+  uptimeSeconds: number;
+  stats: ProviderLoopStats;
 }
 
 export class ProviderLoop {
   private readonly deps: ProviderLoopDeps;
+  private readonly sleeper: Sleeper;
+  private readonly deliverRetries: number;
+  private readonly retryBaseMs: number;
   private readonly inFlight = new Set<string>();
   private readonly delivered = new Set<string>();
+  private readonly negotiationsInFlight = new Set<string>();
+  private readonly acceptedNegotiations = new Set<string>();
   private connection: CapConnection | null = null;
+  private startedAt: Date | null = null;
+  private stopped = false;
+  private lastEventAt: Date | null = null;
+  private lastSweepAt: Date | null = null;
 
   readonly stats: ProviderLoopStats = {
     negotiationsAccepted: 0,
     negotiationsRejected: 0,
     ordersDelivered: 0,
     ordersRejected: 0,
+    ordersSkippedSla: 0,
     errors: 0,
   };
 
   constructor(deps: ProviderLoopDeps) {
     this.deps = deps;
+    this.sleeper = deps.sleeper ?? systemSleeper;
+    this.deliverRetries = deps.deliverRetries ?? 3;
+    this.retryBaseMs = deps.retryBaseMs ?? 250;
+  }
+
+  /** True if the order's SLA deadline is set and already in the past. */
+  private slaExpired(order: CapOrder): boolean {
+    if (!order.slaDeadline) return false;
+    return this.deps.clock.now().getTime() > new Date(order.slaDeadline).getTime();
   }
 
   async start(): Promise<void> {
+    this.startedAt = this.deps.clock.now();
+    this.stopped = false;
     this.connection = await this.deps.transport.connect((event) => {
       void this.onEvent(event);
     });
@@ -70,12 +112,30 @@ export class ProviderLoop {
   stop(): void {
     this.connection?.close();
     this.connection = null;
+    this.stopped = true;
     this.deps.logger.info("provider loop stopped");
+  }
+
+  /** Point-in-time liveness snapshot for the status page / health probe. */
+  health(): ProviderLoopHealth {
+    const now = this.deps.clock.now();
+    return {
+      status: this.stopped ? "stopped" : this.startedAt ? "ok" : "starting",
+      connected: this.connection !== null,
+      startedAt: this.startedAt?.toISOString() ?? null,
+      lastEventAt: this.lastEventAt?.toISOString() ?? null,
+      lastSweepAt: this.lastSweepAt?.toISOString() ?? null,
+      uptimeSeconds: this.startedAt
+        ? Math.floor((now.getTime() - this.startedAt.getTime()) / 1000)
+        : 0,
+      stats: { ...this.stats },
+    };
   }
 
   /** Catch up on anything that happened while offline. */
   async sweep(): Promise<void> {
     const { transport, logger } = this.deps;
+    this.lastSweepAt = this.deps.clock.now();
     const pending = await transport.listPendingNegotiations();
     for (const negotiation of pending) {
       await this.handleNegotiation(negotiation);
@@ -94,6 +154,7 @@ export class ProviderLoop {
 
   private async onEvent(event: CapEvent): Promise<void> {
     const { transport, logger } = this.deps;
+    this.lastEventAt = this.deps.clock.now();
     try {
       switch (event.type) {
         case "negotiation_created": {
@@ -125,38 +186,48 @@ export class ProviderLoop {
     const { transport, registry, logger } = this.deps;
     if (negotiation.status && negotiation.status !== "pending") return;
 
-    if (negotiation.fundAmount && negotiation.fundAmount !== "0") {
-      await transport.rejectNegotiation(
-        negotiation.negotiationId,
-        "fund-transfer services are not supported by this agent",
-      );
-      this.stats.negotiationsRejected += 1;
+    // Reconnect-storm guard: duplicate negotiation_created events race here with
+    // identical `pending` reads. The synchronous in-flight/accepted check (no
+    // await before it) admits exactly one, so we never fire a second accept.
+    const negId = negotiation.negotiationId;
+    if (this.negotiationsInFlight.has(negId) || this.acceptedNegotiations.has(negId))
       return;
-    }
+    this.negotiationsInFlight.add(negId);
+    try {
+      if (negotiation.fundAmount && negotiation.fundAmount !== "0") {
+        await transport.rejectNegotiation(
+          negId,
+          "fund-transfer services are not supported by this agent",
+        );
+        this.stats.negotiationsRejected += 1;
+        return;
+      }
 
-    const handler = registry.resolve(negotiation.serviceId);
-    if (!handler) {
-      await transport.rejectNegotiation(
-        negotiation.negotiationId,
-        `unknown service ${negotiation.serviceId}`,
-      );
-      this.stats.negotiationsRejected += 1;
-      logger.warn("rejected negotiation for unknown service", {
+      const handler = registry.resolve(negotiation.serviceId);
+      if (!handler) {
+        await transport.rejectNegotiation(
+          negId,
+          `unknown service ${negotiation.serviceId}`,
+        );
+        this.stats.negotiationsRejected += 1;
+        logger.warn("rejected negotiation for unknown service", {
+          serviceId: negotiation.serviceId,
+        });
+        return;
+      }
+
+      const { orderId } = await transport.acceptNegotiation(negId);
+      this.acceptedNegotiations.add(negId);
+      this.stats.negotiationsAccepted += 1;
+      logger.info("negotiation accepted", {
+        negotiationId: negId,
         serviceId: negotiation.serviceId,
+        handler: handler.name,
+        orderId,
       });
-      return;
+    } finally {
+      this.negotiationsInFlight.delete(negId);
     }
-
-    const { orderId } = await transport.acceptNegotiation(
-      negotiation.negotiationId,
-    );
-    this.stats.negotiationsAccepted += 1;
-    logger.info("negotiation accepted", {
-      negotiationId: negotiation.negotiationId,
-      serviceId: negotiation.serviceId,
-      handler: handler.name,
-      orderId,
-    });
   }
 
   private async fulfil(orderId: string): Promise<void> {
@@ -169,6 +240,17 @@ export class ProviderLoop {
         logger.info("skipping order not in paid state", {
           orderId,
           status: order.status,
+        });
+        return;
+      }
+
+      // SLA already blown before we even start: don't burn an upstream call and
+      // don't deliver stale — CAP's expiry path refunds the escrow.
+      if (this.slaExpired(order)) {
+        this.stats.ordersSkippedSla += 1;
+        logger.warn("skipping order past SLA deadline", {
+          orderId,
+          slaDeadline: order.slaDeadline,
         });
         return;
       }
@@ -210,17 +292,80 @@ export class ProviderLoop {
         return;
       }
 
-      const { txHash } = await transport.deliverOrder(orderId, {
-        type: "text",
-        text: stableStringify(payload),
-      });
+      const text = stableStringify(payload);
+      // A single, state-checked, retryable delivery. Re-reading the order each
+      // attempt makes it idempotent and self-healing:
+      //  - transient blip (deliver threw, state untouched) → retry re-delivers.
+      //  - landed-but-lost (tx cleared, response dropped) → next read shows the
+      //    order already completed, so we count it once instead of re-sending.
+      //  - SLA blown while the handler ran → skip; CAP's expiry refunds escrow.
+      type Outcome =
+        | { kind: "delivered"; txHash: string | undefined }
+        | { kind: "already" }
+        | { kind: "sla" }
+        | { kind: "gone"; status: string };
+      const attempt = async (): Promise<Outcome> => {
+        const current = await transport.getOrder(orderId);
+        if (current.status === "completed") return { kind: "already" };
+        // Terminal non-paid state (rejected/expired/refunded, possibly mid-work):
+        // stop cleanly — not an error, and don't burn the retry budget on it.
+        if (current.status !== "paid")
+          return { kind: "gone", status: current.status };
+        if (this.slaExpired(current)) return { kind: "sla" };
+        const { txHash } = await transport.deliverOrder(orderId, {
+          type: "text",
+          text,
+        });
+        return { kind: "delivered", txHash };
+      };
+
+      let outcome: Outcome;
+      try {
+        outcome = await retry(attempt, {
+          retries: this.deliverRetries,
+          baseMs: this.retryBaseMs,
+          sleeper: this.sleeper,
+          onRetry: (n, error) =>
+            logger.warn("deliver failed; retrying", {
+              orderId,
+              attempt: n,
+              error: String(error),
+            }),
+        });
+      } catch (deliverError) {
+        // The deliver may actually have LANDED and only the response was lost.
+        // Re-read the truth: completed → count once (no double send); still paid
+        // → a genuine failure, propagate so escrow is untouched and the periodic
+        // sweep retries later (no stuck escrow).
+        const after = await transport.getOrder(orderId);
+        if (after.status !== "completed") throw deliverError;
+        outcome = { kind: "already" };
+      }
+
+      if (outcome.kind === "sla") {
+        this.stats.ordersSkippedSla += 1;
+        logger.warn("SLA expired mid-work; not delivering", { orderId });
+        return;
+      }
+      if (outcome.kind === "gone") {
+        logger.info("order left the paid state before delivery; nothing to do", {
+          orderId,
+          status: outcome.status,
+        });
+        return;
+      }
       this.delivered.add(orderId);
       this.stats.ordersDelivered += 1;
-      logger.info("order delivered", {
-        orderId,
-        handler: handler.name,
-        txHash: txHash ?? null,
-      });
+      logger.info(
+        outcome.kind === "already"
+          ? "order already completed on-chain (response was lost); counted once"
+          : "order delivered",
+        {
+          orderId,
+          handler: handler.name,
+          txHash: outcome.kind === "delivered" ? (outcome.txHash ?? null) : null,
+        },
+      );
     } finally {
       this.inFlight.delete(orderId);
     }
