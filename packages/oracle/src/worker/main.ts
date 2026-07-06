@@ -8,8 +8,9 @@ import { createResearchService } from "../core/services/research.js";
 import { createSentimentService } from "../core/services/sentiment.js";
 import { createSpawnService } from "../core/services/spawn.js";
 import { createVerifyService } from "../core/services/verify.js";
+import { createWatchService } from "../core/services/watch.js";
 import { parseServiceMap, readEnv } from "../config.js";
-import { consoleLogger, systemClock } from "../ports/runtime.js";
+import { consoleLogger, systemClock, systemSleeper } from "../ports/runtime.js";
 
 /**
  * The Hunch Oracle Desk provider worker.
@@ -28,6 +29,7 @@ async function main() {
     research: createResearchService(hunch),
     verify: createVerifyService(hunch),
     spawn: createSpawnService(hunch),
+    watch: createWatchService({ hunch, sleeper: systemSleeper }),
   };
 
   const services: Record<string, ServiceHandler> = {};

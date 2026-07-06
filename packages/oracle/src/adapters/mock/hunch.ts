@@ -2,6 +2,7 @@ import type {
   HunchApi,
   HunchCatalogue,
   HunchDiscoverMatch,
+  HunchMarketResult,
   HunchMintResult,
   HunchQuote,
   HunchRead,
@@ -35,10 +36,26 @@ export interface MockHunchFixtures {
   verifications?: Record<string, HunchVerifyResult>;
   /** Uppercased symbol → recorded mint result. Unrecorded symbols 422. */
   mints?: Record<string, HunchMintResult>;
+  /**
+   * marketId → sequence of result payloads; each read consumes the next entry
+   * (last repeats) so tests can script pending → pending → resolved.
+   */
+  resultSequences?: Record<string, HunchMarketResult[]>;
+  /** marketId → sequence of quotes; each read consumes the next (last repeats). */
+  quoteSequences?: Record<string, HunchQuote[]>;
 }
 
 export class MockHunchApi implements HunchApi {
+  private readonly sequenceCursors = new Map<string, number>();
+
   constructor(private readonly fixtures: MockHunchFixtures) {}
+
+  private nextInSequence<T>(mapKey: string, sequence: T[]): T | null {
+    if (sequence.length === 0) return null;
+    const cursor = this.sequenceCursors.get(mapKey) ?? 0;
+    this.sequenceCursors.set(mapKey, cursor + 1);
+    return sequence[Math.min(cursor, sequence.length - 1)] ?? null;
+  }
 
   private read<T>(data: T, path: string): HunchRead<T> {
     return {
@@ -53,6 +70,11 @@ export class MockHunchApi implements HunchApi {
   }
 
   async quote(marketId: string): Promise<HunchRead<HunchQuote>> {
+    const sequence = this.fixtures.quoteSequences?.[marketId];
+    if (sequence) {
+      const next = this.nextInSequence(`quote:${marketId}`, sequence);
+      if (next) return this.read(next, `/api/partner/quote?marketId=${marketId}`);
+    }
     const quote = this.fixtures.quotes?.[marketId];
     if (quote) {
       return this.read(quote, `/api/partner/quote?marketId=${marketId}`);
@@ -91,6 +113,26 @@ export class MockHunchApi implements HunchApi {
   ): Promise<HunchRead<{ count: number; matches: HunchDiscoverMatch[] }>> {
     const found = this.fixtures.discoveries?.[query] ?? { count: 0, matches: [] };
     return this.read(found, `/api/partner/discover?q=${encodeURIComponent(query)}`);
+  }
+
+  async result(
+    marketId: string,
+  ): Promise<HunchRead<{ result: HunchMarketResult }>> {
+    const sequence = this.fixtures.resultSequences?.[marketId];
+    const next = sequence
+      ? this.nextInSequence(`result:${marketId}`, sequence)
+      : null;
+    if (!next) {
+      throw new HunchApiError(
+        "market_not_found",
+        404,
+        `https://mock.playhunch.xyz/api/partner/result?marketId=${marketId}`,
+      );
+    }
+    return this.read(
+      { result: next },
+      `/api/partner/result?marketId=${marketId}`,
+    );
   }
 
   async verifyClaim(

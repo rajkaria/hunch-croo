@@ -2,6 +2,7 @@ import type {
   HunchApi,
   HunchCatalogue,
   HunchDiscoverMatch,
+  HunchMarketResult,
   HunchMintResult,
   HunchQuote,
   HunchRead,
@@ -153,6 +154,15 @@ export class HunchClient implements HunchApi {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  async result(
+    marketId: string,
+  ): Promise<HunchRead<{ result: HunchMarketResult }>> {
+    const params = new URLSearchParams({ marketId });
+    return this.get<{ result: HunchMarketResult } & MetaEnvelope>(
+      `/api/partner/result?${params.toString()}`,
+    );
   }
 
   async verifyClaim(

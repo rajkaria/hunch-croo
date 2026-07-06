@@ -174,6 +174,21 @@ export interface HunchMintResult {
   market: HunchMarketRef | null;
 }
 
+export interface HunchMarketResult {
+  marketId: string;
+  status: string;
+  resolvedOutcome: string | null;
+  resolvedOutcomeLabel: string | null;
+  resolvedAt: string | null;
+  source: string | null;
+  sourceUrl: string | null;
+  observedMarketCapUsd: number | null;
+  payoutPerShareUsd: number | null;
+  poolUsd: number;
+  winningShares: number;
+  proofUrl: string | null;
+}
+
 export interface HunchApi {
   catalogue(): Promise<HunchRead<HunchCatalogue>>;
   quote(
@@ -185,6 +200,8 @@ export interface HunchApi {
     query: string,
     limit?: number,
   ): Promise<HunchRead<{ count: number; matches: HunchDiscoverMatch[] }>>;
+  /** GET /api/partner/result — resolution status for a market. */
+  result(marketId: string): Promise<HunchRead<{ result: HunchMarketResult }>>;
   /** POST /api/partner/verify — throws HunchApiError on 4xx (bad claim / unvetted token). */
   verifyClaim(claim: HunchVerifyClaim): Promise<HunchRead<HunchVerifyResult>>;
   /** POST /api/partner/mint — throws HunchApiError on 4xx (not pinned / rate limited). */
