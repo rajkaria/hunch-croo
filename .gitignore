@@ -13,3 +13,4 @@ dist/
 .DS_Store
 coverage/
 .burn-rate/
+__pycache__/

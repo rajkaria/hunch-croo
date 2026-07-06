@@ -23,6 +23,6 @@ SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
 Roadmap **S11→S14 complete** (built 2026-07-06); no S15 defined — a "continue"
 next session needs a fresh brainstorm.
 
-Branch topology: `main` is at S10; S11 lives on `claude/stoic-carson-602b4d`
-(unmerged); S11→S14 live on `claude/reverent-shirley-ac533f` (unmerged). Merging
-to `main` is a pending human step.
+Branch topology: `main` is at S14 (S11→S14 merged 2026-07-06). The old sprint
+branches (`claude/stoic-carson-602b4d`, `claude/reverent-shirley-ac533f`, etc.)
+are fully merged and safe to prune.
