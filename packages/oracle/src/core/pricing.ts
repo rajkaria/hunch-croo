@@ -63,4 +63,11 @@ export const SERVICE_PRICING: Record<string, ServicePricing> = {
     summary:
       "Non-custodial hedge plan for a position: market, side, size and executable trade instructions against the live book.",
   },
+  "portfolio-hedge": {
+    listing: "Hunch Market Desk",
+    priceUsd: 3,
+    slaMinutes: 10,
+    summary:
+      "Non-custodial basket hedge for a whole book: one budget allocated across many positions, each priced off the live market, with portfolio aggregates and an executable trade call per leg.",
+  },
 };

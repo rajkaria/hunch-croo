@@ -5,6 +5,7 @@ import { createRegistry, type ServiceHandler } from "../core/service-registry.js
 import { echoService } from "../core/services/echo.js";
 import { createForecastService } from "../core/services/forecast.js";
 import { createHedgeQuoteService } from "../core/services/hedge-quote.js";
+import { createPortfolioHedgeService } from "../core/services/portfolio-hedge.js";
 import { createResearchService } from "../core/services/research.js";
 import { createSentimentService } from "../core/services/sentiment.js";
 import { createScorecardService } from "../core/services/scorecard.js";
@@ -49,6 +50,10 @@ async function main() {
     watch: createWatchService({ hunch, sleeper: systemSleeper }),
     "hedge-quote": createHedgeQuoteService(hunch, {
       maxStakeUsd: env.HEDGE_QUOTE_MAX_STAKE_USD,
+    }),
+    "portfolio-hedge": createPortfolioHedgeService(hunch, {
+      maxStakeUsd: env.PORTFOLIO_HEDGE_MAX_STAKE_USD,
+      maxLegStakeUsd: env.PORTFOLIO_HEDGE_MAX_LEG_STAKE_USD,
     }),
     ...(ledger ? { scorecard: createScorecardService(ledger) } : {}),
   };

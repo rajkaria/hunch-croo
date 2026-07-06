@@ -22,6 +22,7 @@ them.*
 | `watch` | Monitoring order: delivers when odds cross a threshold or a market resolves — honest `no_trigger` at SLA |
 | `spawn` | No market matches your question? Mints a **real market** on playhunch.xyz and returns the live link |
 | `hedge-quote` | **Non-custodial** hedge plan for a position: side, size, payout, break-even + the executable trade call — you keep custody |
+| `portfolio-hedge` | **Non-custodial** basket hedge for a whole book: one budget allocated across many positions, priced off the live markets, with portfolio aggregates + a correlation flag |
 | `scorecard` | The desk's **public, tamper-evident track record**: every forecast it sold, scored against real resolution — Brier, calibration, head hash to pin |
 
 Status: CAP integration live (S0 ✅ — full lifecycle: negotiate → escrow →
@@ -71,6 +72,23 @@ whole thing is **opt-in** (`ORACLE_LEDGER_PATH`), strictly additive to the
 existing desk. See [docs/SCORECARD.md](docs/SCORECARD.md); watch the full
 flywheel run credential-free with `pnpm --filter @hunch/oracle smoke:scorecard`,
 and browse the public page at `/scorecard`.
+
+## Hedge a book, not just a bet
+
+`hedge-quote` prices one hedge; **`portfolio-hedge`** prices a coordinated basket
+across a whole book in one order. Hand it a set of positions and one budget, and
+a deterministic allocator splits that budget across the legs — proportional to
+exposure, or scaled down proportionally when the requested premiums exceed the
+cap — prices each leg off its live market (through the *same* `priceLeg` module
+`hedge-quote` uses, so the numbers agree), and returns portfolio aggregates plus
+a ready-to-sign trade call per leg. It stays honest about risk: exposure,
+premium, payout, coverage ratio, and a **same-instrument correlation flag** (legs
+on the same market/token are grouped as "not independent") — but **no fabricated
+covariance or VaR**, because we don't have a returns series to invent one from.
+Non-custodial throughout, per-leg fail-soft (one bad market degrades that leg,
+not the basket), and byte-deterministic. See
+[docs/PORTFOLIO-HEDGE.md](docs/PORTFOLIO-HEDGE.md); demo it credential-free with
+`pnpm --filter @hunch/oracle smoke:portfolio-hedge`.
 
 ## Watch it — Prometheus, revenue, live calibration
 

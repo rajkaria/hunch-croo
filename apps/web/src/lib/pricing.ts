@@ -78,4 +78,14 @@ export const SERVICES: ServicePricing[] = [
       "Non-custodial hedge plan for a position: market, side, size and executable trade instructions against the live book.",
     example: '{"marketSlug": "ansem-flip-pump", "side": "yes", "stakeUsd": 5}',
   },
+  {
+    service: "portfolio-hedge",
+    listing: "Hunch Market Desk",
+    priceUsd: 3,
+    slaMinutes: 10,
+    summary:
+      "Non-custodial basket hedge for a whole book: one budget allocated across many positions, each priced off the live market, with portfolio aggregates, a same-instrument correlation flag, and an executable trade call per leg.",
+    example:
+      '{"budgetUsd": 30, "positions": [{"marketSlug": "aixbt-50m", "side": "yes", "exposureUsd": 300}, {"marketSlug": "ansem-flip-pump", "side": "no", "exposureUsd": 100}]}',
+  },
 ];

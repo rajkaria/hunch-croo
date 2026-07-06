@@ -59,6 +59,13 @@ const EnvSchema = z.object({
    * plan we hand back, not the desk's own money.
    */
   HEDGE_QUOTE_MAX_STAKE_USD: z.coerce.number().positive().default(10),
+  /**
+   * `portfolio-hedge` (S13) deterministic caps. `MAX_STAKE_USD` bounds the TOTAL
+   * basket premium; `MAX_LEG_STAKE_USD` bounds any single leg so one can't eat
+   * the budget. As with hedge-quote, the LLM never sizes the basket — these do.
+   */
+  PORTFOLIO_HEDGE_MAX_STAKE_USD: z.coerce.number().positive().default(50),
+  PORTFOLIO_HEDGE_MAX_LEG_STAKE_USD: z.coerce.number().positive().default(10),
 
   // ── Signal-buyer (S8): the requester side ────────────────────────────────
   /** Requester agent key (an agent cannot hire itself → separate from CROO_SDK_KEY). */

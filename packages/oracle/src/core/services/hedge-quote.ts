@@ -9,6 +9,7 @@ import type { ServiceContext, ServiceHandler } from "../service-registry.js";
 import { confidenceFor, type ProvenanceEntry } from "../forecast/composer.js";
 import { matchQuestion, MATCH_THRESHOLD } from "../forecast/matcher.js";
 import { parseQuestion } from "../forecast/schema.js";
+import { priceLeg, round2, round4, stakeForCoverage } from "../hedge/leg.js";
 
 /**
  * `hedge-quote` — the Market Desk's NON-CUSTODIAL hedge service. Given a market
@@ -67,10 +68,6 @@ export interface HedgeQuoteOptions {
   /** Deterministic per-order stake cap in USD (default $10). */
   maxStakeUsd?: number;
 }
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-const round4 = (n: number) => Math.round((n + Number.EPSILON) * 1e4) / 1e4;
-const round6 = (n: number) => Math.round((n + Number.EPSILON) * 1e6) / 1e6;
 
 function isYesNoOdds(odds: HunchQuote["odds"]): odds is HunchYesNoOdds {
   return (
@@ -252,36 +249,20 @@ export function createHedgeQuoteService(
       const feeRate = market.feeBps / 10_000;
 
       // Size the premium. coverageUsd back-solves the stake needed for the
-      // desired payout: coverage = stake·(1−feeRate)/price → stake = coverage·price/(1−feeRate).
+      // desired payout, then the shared leg pricer clamps + derives economics
+      // (one implementation, shared with portfolio-hedge).
       const rawStake =
         req.stakeUsd !== undefined
           ? req.stakeUsd
-          : (req.coverageUsd! * price) / (1 - feeRate);
-      const capApplied = rawStake > maxStakeUsd + 1e-9;
-      const stakeUsd = round2(Math.min(rawStake, maxStakeUsd));
-
-      const feeUsd = round2(stakeUsd * feeRate);
-      const netUsd = round2(stakeUsd - feeUsd);
-      const shares = round6(netUsd / price);
-      const payoutIfWinUsd = round2(shares);
-      const profitIfWinUsd = round2(payoutIfWinUsd - stakeUsd);
-      const returnMultiple = round4(payoutIfWinUsd / stakeUsd);
-      const belowMinTicket = stakeUsd < market.defaultTicketUsd;
-
-      const plan: Record<string, unknown> = {
-        stakeUsd,
-        feeUsd,
+          : stakeForCoverage(req.coverageUsd!, price, feeRate);
+      const plan = priceLeg({
+        priceCents,
         feeBps: market.feeBps,
-        netUsd,
-        shares,
-        payoutIfWinUsd,
-        profitIfWinUsd,
-        returnMultiple,
-        breakevenProbability: round4(price),
+        defaultTicketUsd: market.defaultTicketUsd,
+        rawStakeUsd: rawStake,
         maxStakeUsd,
-        capApplied,
-        belowMinTicket,
-      };
+      });
+      const { stakeUsd, payoutIfWinUsd } = plan;
 
       let coverage: Record<string, unknown> | null = null;
       if (req.coverageUsd !== undefined) {
