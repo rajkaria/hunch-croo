@@ -31,6 +31,13 @@ const EnvSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v === "true"),
+  /**
+   * Deterministic per-order cap (USD) on the stake a `hedge-quote` plan may
+   * recommend. The LLM never sizes a hedge — this cap does; over-cap requests
+   * are clamped, never silently honoured. Non-custodial, so this bounds the
+   * plan we hand back, not the desk's own money.
+   */
+  HEDGE_QUOTE_MAX_STAKE_USD: z.coerce.number().positive().default(10),
 
   // ── Signal-buyer (S8): the requester side ────────────────────────────────
   /** Requester agent key (an agent cannot hire itself → separate from CROO_SDK_KEY). */

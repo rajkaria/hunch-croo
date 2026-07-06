@@ -11,6 +11,7 @@
     "spike:requester": "tsx src/worker/spike-requester.ts",
     "signal-buyer": "tsx src/worker/signal-buyer.ts",
     "smoke:signal-buyer": "tsx src/worker/smoke-signal-buyer.ts",
+    "smoke:hedge-quote": "tsx src/worker/smoke-hedge-quote.ts",
     "probe": "tsx src/worker/probe.ts"
   },
   "dependencies": {

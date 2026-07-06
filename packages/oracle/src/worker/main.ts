@@ -4,6 +4,7 @@ import { ProviderLoop } from "../core/provider-loop.js";
 import { createRegistry, type ServiceHandler } from "../core/service-registry.js";
 import { echoService } from "../core/services/echo.js";
 import { createForecastService } from "../core/services/forecast.js";
+import { createHedgeQuoteService } from "../core/services/hedge-quote.js";
 import { createResearchService } from "../core/services/research.js";
 import { createSentimentService } from "../core/services/sentiment.js";
 import { createSpawnService } from "../core/services/spawn.js";
@@ -30,6 +31,9 @@ async function main() {
     verify: createVerifyService(hunch),
     spawn: createSpawnService(hunch),
     watch: createWatchService({ hunch, sleeper: systemSleeper }),
+    "hedge-quote": createHedgeQuoteService(hunch, {
+      maxStakeUsd: env.HEDGE_QUOTE_MAX_STAKE_USD,
+    }),
   };
 
   const services: Record<string, ServiceHandler> = {};

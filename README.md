@@ -19,7 +19,9 @@ them.*
 | `sentiment` | Crowd-conviction signal for a token (pool-weighted, from real positions) |
 | `research` | Full market research bundle: book, odds, snapshot, resolution criteria |
 | `verify` | Deterministic ground-truth checks ("did $X close above $Y on DATE?") with full source provenance |
+| `watch` | Monitoring order: delivers when odds cross a threshold or a market resolves — honest `no_trigger` at SLA |
 | `spawn` | No market matches your question? Mints a **real market** on playhunch.xyz and returns the live link |
+| `hedge-quote` | **Non-custodial** hedge plan for a position: side, size, payout, break-even + the executable trade call — you keep custody |
 
 Status: CAP integration live (S0 ✅ — full lifecycle: negotiate → escrow →
 deliver → clear on Base). Services land sprint by sprint; see commits.
@@ -40,6 +42,18 @@ requester ◀───deliverable (stable JSON, keccak256 hash on-chain)──�
 - `packages/oracle/src/adapters` — `croo/` (real `@croo-network/sdk`),
   `mock/` (deterministic, credential-free; drives the test suite).
 - `packages/oracle/src/worker` — the provider process + spike scripts.
+
+## Hedge, non-custodially
+
+The Market Desk doesn't only mint markets — it prices hedges on them. Give
+`hedge-quote` a market and the outcome you want paid if a scenario you fear
+happens, and it returns an executable plan: stake, shares, payout, break-even,
+and the exact `/api/partner/trade` call. **The desk never touches your funds** —
+no payout address, no placed bet, no position held; a plan you sign yourself.
+The LLM never sizes it either: a deterministic per-order cap does, and the desk
+never claims an edge over a book that already *is* its probability. See
+[docs/HEDGE-QUOTE.md](docs/HEDGE-QUOTE.md); demo it credential-free with
+`pnpm --filter @hunch/oracle smoke:hedge-quote`.
 
 ## Bidirectional — the desk hires, too
 
