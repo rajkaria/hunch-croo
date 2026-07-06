@@ -58,6 +58,12 @@ export interface ProviderLoopStats {
   /** Paid orders skipped because their SLA deadline had already passed. */
   ordersSkippedSla: number;
   errors: number;
+  /**
+   * Delivered orders broken down by service handler name (S12 observability).
+   * Powers the per-service throughput + booked-revenue metrics. Additive: the
+   * scalar counters above are unchanged.
+   */
+  deliveredByService: Record<string, number>;
 }
 
 /** A point-in-time liveness snapshot — the payload behind the status page. */
@@ -95,6 +101,7 @@ export class ProviderLoop {
     ordersRejected: 0,
     ordersSkippedSla: 0,
     errors: 0,
+    deliveredByService: {},
   };
 
   constructor(deps: ProviderLoopDeps) {
@@ -367,6 +374,8 @@ export class ProviderLoop {
       }
       this.delivered.add(orderId);
       this.stats.ordersDelivered += 1;
+      this.stats.deliveredByService[handler.name] =
+        (this.stats.deliveredByService[handler.name] ?? 0) + 1;
       const txHash =
         outcome.kind === "delivered" ? (outcome.txHash ?? null) : null;
       logger.info(

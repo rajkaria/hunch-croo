@@ -24,6 +24,7 @@ function fakeHealth(overrides: Partial<ProviderLoopHealth> = {}): ProviderLoopHe
       ordersRejected: 0,
       ordersSkippedSla: 0,
       errors: 0,
+      deliveredByService: {},
     },
     ...overrides,
   };

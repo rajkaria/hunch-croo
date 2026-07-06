@@ -13,6 +13,7 @@
     "smoke:signal-buyer": "tsx src/worker/smoke-signal-buyer.ts",
     "smoke:hedge-quote": "tsx src/worker/smoke-hedge-quote.ts",
     "smoke:scorecard": "tsx src/worker/smoke-scorecard.ts",
+    "smoke:metrics": "tsx src/worker/smoke-metrics.ts",
     "smoke:hardening": "tsx src/worker/smoke-hardening.ts",
     "probe": "tsx src/worker/probe.ts"
   },

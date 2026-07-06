@@ -13,10 +13,14 @@ import { createVerifyService } from "../core/services/verify.js";
 import { createWatchService } from "../core/services/watch.js";
 import { createFsLedger } from "../adapters/fs/ledger.js";
 import { runSettleSweep } from "../core/track-record/settle-sweep.js";
+import { rollup } from "../core/track-record/scoring.js";
+import { buildMetrics } from "../core/metrics/snapshot.js";
+import { formatPrometheus } from "../core/metrics/registry.js";
+import { SERVICE_PRICING } from "../core/pricing.js";
 import type { LedgerStore } from "../ports/ledger.js";
 import { parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock, systemSleeper } from "../ports/runtime.js";
-import { startHealthServer } from "./health-server.js";
+import { startHealthServer, type MetricsProvider } from "./health-server.js";
 
 /**
  * The Hunch Oracle Desk provider worker.
@@ -89,10 +93,38 @@ async function main() {
     trackRecord: ledger ? env.ORACLE_LEDGER_PATH : "disabled",
   });
 
-  // Optional status page for uptime checks / judges (curl :PORT/status).
+  // S12 observability: a Prometheus exposition on the same ops port as /status.
+  // Booked-revenue + throughput come from the loop's in-memory counters; the
+  // scorecard family (Brier, hit-rate) is read from the ledger when enabled. A
+  // ledger read failure degrades to "no scorecard family", never a 500.
+  const metricsProvider: MetricsProvider = {
+    async render() {
+      let rollupSnapshot = null;
+      if (ledger) {
+        try {
+          rollupSnapshot = rollup(await ledger.list());
+        } catch (error) {
+          logger.warn("metrics: ledger read failed; omitting scorecard family", {
+            error: String(error),
+          });
+        }
+      }
+      return formatPrometheus(
+        buildMetrics({
+          health: loop.health(),
+          deliveredByService: loop.stats.deliveredByService,
+          pricing: SERVICE_PRICING,
+          rollup: rollupSnapshot,
+        }),
+      );
+    },
+  };
+
+  // Optional ops server: JSON /status + /healthz for uptime checks, and the
+  // Prometheus /metrics endpoint for Grafana — all on ORACLE_HEALTH_PORT.
   const healthServer =
     env.ORACLE_HEALTH_PORT !== undefined
-      ? startHealthServer(loop, env.ORACLE_HEALTH_PORT, logger)
+      ? startHealthServer(loop, env.ORACLE_HEALTH_PORT, logger, metricsProvider)
       : null;
 
   // periodic sweep as a WS-drop / missed-event safety net

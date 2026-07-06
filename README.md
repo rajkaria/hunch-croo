@@ -72,6 +72,21 @@ existing desk. See [docs/SCORECARD.md](docs/SCORECARD.md); watch the full
 flywheel run credential-free with `pnpm --filter @hunch/oracle smoke:scorecard`,
 and browse the public page at `/scorecard`.
 
+## Watch it — Prometheus, revenue, live calibration
+
+The desk counts everything it does and knows what every service is worth, so S12
+exposes a standard Prometheus **`/metrics`** endpoint on the same ops port as the
+status page (`ORACLE_HEALTH_PORT`) — no new config. Throughput, uptime, per-service
+delivery counts, **booked revenue at list price**, and the live scorecard family
+(Brier, hit-rate) all become time series you can point Grafana at. Booked revenue
+(delivered × list price, computed in-process) is kept deliberately distinct from
+the **settled** USDC the dashboard reads off Base — two honest numbers, never
+conflated. No latency histogram is faked: CAP gives us no reliable per-order start
+time, so we omit it rather than invent a distribution. It's dependency-free (we
+own the exposition format, no `prom-client`) and golden-tested for byte-stability.
+See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md); watch it credential-free with
+`pnpm --filter @hunch/oracle smoke:metrics`, and browse the catalog at `/metrics`.
+
 ## Bidirectional — the desk hires, too
 
 The desk isn't only a seller. Its **signal-buyer** hires external CAP research

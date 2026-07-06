@@ -31,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="nav-links">
               <Link href="/dashboard">Live dashboard</Link>
               <Link href="/scorecard">Scorecard</Link>
+              <Link href="/metrics">Metrics</Link>
               <Link href="/docs">Docs</Link>
               <a
                 href="https://github.com/rajkaria/hunch-croo"

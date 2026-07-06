@@ -65,6 +65,41 @@ describe("ProviderLoop", () => {
     });
   });
 
+  it("counts deliveries per service handler (S12 observability)", async () => {
+    const forecastish: ServiceHandler = {
+      name: "forecast",
+      handle: async () => ({ service: "forecast", status: "ok" }),
+    };
+    const spawnish: ServiceHandler = {
+      name: "spawn",
+      handle: async () => ({ service: "spawn", status: "ok" }),
+    };
+    const transport = new MockCapTransport();
+    const registry = createRegistry({
+      services: { "svc-a": forecastish, "svc-b": spawnish },
+    });
+    const loop = new ProviderLoop({
+      transport,
+      registry,
+      clock: fixedClock,
+      logger: silentLogger,
+    });
+    await loop.start();
+
+    transport.createNegotiation({ serviceId: "svc-a" }); // order-1 → order-2
+    await settle();
+    transport.createNegotiation({ serviceId: "svc-a" });
+    await settle();
+    transport.createNegotiation({ serviceId: "svc-b" });
+    await settle();
+    for (const order of transport.listCreatedOrders())
+      transport.payOrder(order.orderId);
+    await settle();
+
+    expect(loop.stats.ordersDelivered).toBe(3);
+    expect(loop.stats.deliveredByService).toEqual({ forecast: 2, spawn: 1 });
+  });
+
   it("rejects negotiations for unknown services", async () => {
     const { transport, loop } = makeLoop();
     await loop.start();
