@@ -59,14 +59,14 @@ function isYesNoOdds(odds: HunchQuote["odds"]): odds is HunchYesNoOdds {
 export function composeForecast(
   match: MatchCandidate,
   quoteRead: HunchRead<HunchQuote>,
-  catalogueProvenance: ProvenanceEntry,
+  baseProvenance: ProvenanceEntry[],
 ): ComposedForecast {
   const quote = quoteRead.data;
   const market = quote.market;
   const stats = quote.stats;
 
   const provenance: ProvenanceEntry[] = [
-    catalogueProvenance,
+    ...baseProvenance,
     {
       source: "playhunch.xyz partner quote (live parimutuel book)",
       url: quoteRead.url,

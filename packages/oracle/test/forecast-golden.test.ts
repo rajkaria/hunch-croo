@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { MockHunchApi } from "../src/adapters/mock/hunch.js";
 import { matchQuestion, openMarkets } from "../src/core/forecast/matcher.js";
 import { parseQuestion } from "../src/core/forecast/schema.js";
 import { createForecastService } from "../src/core/services/forecast.js";
 import { stableStringify } from "../src/core/stable-json.js";
 import {
+  FROZEN_NOW,
   fakeOrder,
   fixtureCatalogue,
   fixtureHunchApi,
@@ -178,6 +180,61 @@ describe("forecast service end-to-end (mock adapter)", () => {
     expect(ladder.outcomes.length).toBeGreaterThanOrEqual(4);
     // probability = top bucket's implied price
     expect(payload.probability).toBe(Math.max(...Object.values(odds)) / 100);
+  });
+
+  it("finds factory-spawned markets via the discover merge (the flywheel)", async () => {
+    const factoryMarket = {
+      id: "factory-virtual-1b-2026-08-05",
+      slug: "factory-virtual-1b-2026-08-05",
+      question: "Will $VIRTUAL reach a $1B market cap before Aug 5, 2026?",
+      shortTitle: "$VIRTUAL $1B by Aug 5",
+      summary: "Factory-minted milestone market.",
+      category: "market_cap",
+      tokenSymbol: "VIRTUAL",
+      chainId: "base",
+      deadlineAt: "2026-08-05T23:59:00.000Z",
+      deadlineLabel: "Aug 5",
+      status: "open",
+      feeBps: 200,
+      defaultTicketUsd: 1,
+      virtualLiquidityUsd: 10000,
+      targetMarketCapUsd: 1_000_000_000,
+      outcomes: null,
+      links: {
+        app: "https://www.playhunch.xyz/markets/factory-virtual-1b-2026-08-05",
+        quote: "https://www.playhunch.xyz/api/partner/quote?marketId=factory-virtual-1b-2026-08-05",
+        trade: "https://www.playhunch.xyz/api/partner/trade",
+      },
+    };
+    const question = "Will $VIRTUAL reach a $1B market cap before Aug 5?";
+    const hunchWithDiscover = new MockHunchApi({
+      catalogue: fixtureCatalogue(), // has NO virtual milestone market
+      readAt: FROZEN_NOW,
+      synthesizeQuotes: true,
+      quotes: {
+        [factoryMarket.id]: {
+          market: factoryMarket,
+          side: "yes",
+          odds: { yesPriceCents: 50, noPriceCents: 50 },
+          stats: { totalBets: 0, totalPoolUsd: 0, feeUsd: 0 },
+          tokenSnapshot: null,
+        },
+      },
+      discoveries: {
+        [question]: { count: 1, matches: [{ market: factoryMarket }] },
+      },
+    });
+    const flywheelService = createForecastService(hunchWithDiscover);
+    const payload = await flywheelService.handle({
+      order: fakeOrder(),
+      requirements: "",
+      input: { question },
+      clock: frozenClock,
+    });
+    expect(payload.status).toBe("ok");
+    expect(payload.marketId).toBe("factory-virtual-1b-2026-08-05");
+    const provenance = payload.provenance as Array<{ source: string }>;
+    expect(provenance.some((p) => p.source.includes("discover"))).toBe(true);
   });
 
   it("accepts a bare-string requirement as the question", async () => {

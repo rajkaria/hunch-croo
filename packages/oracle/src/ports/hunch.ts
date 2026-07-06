@@ -151,6 +151,29 @@ export class HunchApiError extends Error {
   }
 }
 
+/** Structured claim for `/api/partner/verify` (whitelisted families only). */
+export type HunchVerifyClaim =
+  | { family: "mcap_at_least"; token: string; lineUsd: number; onDay?: string }
+  | { family: "price_at_least"; token: string; lineUsd: number; onDay?: string }
+  | { family: "mcap_flip"; token: string; versusToken: string }
+  | { family: "chain_dex_volume_7d"; chain: string; versusChain: string };
+
+export interface HunchVerifyResult {
+  verdict: "yes" | "no" | "indeterminate";
+  claim: Record<string, unknown>;
+  reading: Record<string, unknown> | null;
+  method: string;
+  reason?: string;
+  provenance: Array<{ source: string; url: string | null; readAt: string; note?: string }>;
+  asOf: string;
+}
+
+export interface HunchMintResult {
+  status: "minted" | "exists";
+  marketId?: string;
+  market: HunchMarketRef | null;
+}
+
 export interface HunchApi {
   catalogue(): Promise<HunchRead<HunchCatalogue>>;
   quote(
@@ -162,4 +185,12 @@ export interface HunchApi {
     query: string,
     limit?: number,
   ): Promise<HunchRead<{ count: number; matches: HunchDiscoverMatch[] }>>;
+  /** POST /api/partner/verify — throws HunchApiError on 4xx (bad claim / unvetted token). */
+  verifyClaim(claim: HunchVerifyClaim): Promise<HunchRead<HunchVerifyResult>>;
+  /** POST /api/partner/mint — throws HunchApiError on 4xx (not pinned / rate limited). */
+  mint(input: {
+    symbol: string;
+    horizonDays?: number;
+    multiplier?: number;
+  }): Promise<HunchRead<HunchMintResult>>;
 }

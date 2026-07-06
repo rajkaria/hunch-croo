@@ -6,6 +6,8 @@ import { echoService } from "../core/services/echo.js";
 import { createForecastService } from "../core/services/forecast.js";
 import { createResearchService } from "../core/services/research.js";
 import { createSentimentService } from "../core/services/sentiment.js";
+import { createSpawnService } from "../core/services/spawn.js";
+import { createVerifyService } from "../core/services/verify.js";
 import { parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock } from "../ports/runtime.js";
 
@@ -24,6 +26,8 @@ async function main() {
     forecast: createForecastService(hunch),
     sentiment: createSentimentService(hunch),
     research: createResearchService(hunch),
+    verify: createVerifyService(hunch),
+    spawn: createSpawnService(hunch),
   };
 
   const services: Record<string, ServiceHandler> = {};

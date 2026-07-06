@@ -172,9 +172,24 @@ export function matchQuestion(
   question: ParsedQuestion,
   catalogue: HunchCatalogue,
   clock: Clock,
+  /**
+   * Markets to score beyond the static catalogue — factory-minted markets
+   * surface through /discover, not /catalogue, so the flywheel's re-forecast
+   * finds what spawn just created. Same open/deadline filters apply.
+   */
+  extraMarkets: HunchCatalogueEntry[] = [],
 ): MatchResult {
   const now = clock.now();
   const markets = openMarkets(catalogue, now);
+  const seen = new Set(markets.map((m) => m.id));
+  for (const market of extraMarkets) {
+    if (seen.has(market.id)) continue;
+    seen.add(market.id);
+    if (market.status !== "open") continue;
+    const deadline = Date.parse(market.deadlineAt);
+    if (Number.isFinite(deadline) && deadline <= now.getTime()) continue;
+    markets.push(market);
+  }
 
   const candidates: MatchCandidate[] = [];
   for (const market of markets) {

@@ -31,14 +31,38 @@ export function createForecastService(hunch: HunchApi): ServiceHandler {
       }
 
       const question = parseQuestion(parsed.data);
-      const catalogueRead = await hunch.catalogue();
+      // Discover rides along because factory-minted (spawned) markets surface
+      // there, not in the static catalogue — advisory, so a discover outage
+      // never sinks the order.
+      const [catalogueRead, discoverRead] = await Promise.all([
+        hunch.catalogue(),
+        hunch.discover(question.raw, 8).catch(() => null),
+      ]);
       const catalogueProvenance: ProvenanceEntry = {
         source: "playhunch.xyz partner catalogue (open markets)",
         url: catalogueRead.url,
         readAt: catalogueRead.readAt,
       };
+      const provenance: ProvenanceEntry[] = [catalogueProvenance];
+      const extras = (discoverRead?.data.matches ?? []).map((match) => ({
+        ...match.market,
+        categoryKey: match.market.category,
+        tokenSymbols: match.market.tokenSymbol ? [match.market.tokenSymbol] : [],
+      }));
+      if (discoverRead) {
+        provenance.push({
+          source: "playhunch.xyz partner discover (live + factory markets)",
+          url: discoverRead.url,
+          readAt: discoverRead.readAt,
+        });
+      }
 
-      const result = matchQuestion(question, catalogueRead.data, ctx.clock);
+      const result = matchQuestion(
+        question,
+        catalogueRead.data,
+        ctx.clock,
+        extras,
+      );
 
       if (!result.best) {
         const tokenGuess = question.tokenHint ?? question.cashtags[0] ?? null;
@@ -65,7 +89,7 @@ export function createForecastService(hunch: HunchApi): ServiceHandler {
               ...(question.horizonDays ? { horizonDays: question.horizonDays } : {}),
             },
           },
-          provenance: [catalogueProvenance],
+          provenance,
           asOf: ctx.clock.now().toISOString(),
         };
       }
@@ -74,7 +98,7 @@ export function createForecastService(hunch: HunchApi): ServiceHandler {
         side: "yes",
         sizeUsd: 1,
       });
-      const forecast = composeForecast(result.best, quoteRead, catalogueProvenance);
+      const forecast = composeForecast(result.best, quoteRead, provenance);
 
       return {
         service: "forecast",

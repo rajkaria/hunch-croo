@@ -2,9 +2,12 @@ import type {
   HunchApi,
   HunchCatalogue,
   HunchDiscoverMatch,
+  HunchMintResult,
   HunchQuote,
   HunchRead,
   HunchTrendingEntry,
+  HunchVerifyClaim,
+  HunchVerifyResult,
 } from "../../ports/hunch.js";
 import { HunchApiError } from "../../ports/hunch.js";
 
@@ -112,5 +115,60 @@ export class HunchClient implements HunchApi {
     return this.get<{ count: number; matches: HunchDiscoverMatch[] } & MetaEnvelope>(
       `/api/partner/discover?${params.toString()}`,
     );
+  }
+
+  /**
+   * POST helper. Mutations are NOT retried — the caller decides; mint is
+   * idempotent upstream but a double-submit still burns rate-limit budget.
+   * Writes get a longer leash than reads: verify replays observation history
+   * and mint round-trips the factory, both legitimately slower than a quote.
+   */
+  private async post<T extends MetaEnvelope>(
+    path: string,
+    body: unknown,
+  ): Promise<HunchRead<T>> {
+    const url = `${this.baseUrl}${path}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs * 3);
+    try {
+      const response = await this.fetchImpl(url, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { accept: "application/json", "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const parsed = (await response.json()) as T;
+      if (!response.ok) {
+        throw new HunchApiError(
+          parsed.error ?? `hunch api ${response.status}`,
+          response.status,
+          url,
+        );
+      }
+      return {
+        data: parsed,
+        url,
+        readAt: parsed.meta?.generatedAt ?? new Date().toISOString(),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async verifyClaim(
+    claim: HunchVerifyClaim,
+  ): Promise<HunchRead<HunchVerifyResult>> {
+    return this.post<HunchVerifyResult & MetaEnvelope>(
+      "/api/partner/verify",
+      claim,
+    );
+  }
+
+  async mint(input: {
+    symbol: string;
+    horizonDays?: number;
+    multiplier?: number;
+  }): Promise<HunchRead<HunchMintResult>> {
+    return this.post<HunchMintResult & MetaEnvelope>("/api/partner/mint", input);
   }
 }

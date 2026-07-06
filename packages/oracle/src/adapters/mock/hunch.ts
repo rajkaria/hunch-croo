@@ -2,9 +2,12 @@ import type {
   HunchApi,
   HunchCatalogue,
   HunchDiscoverMatch,
+  HunchMintResult,
   HunchQuote,
   HunchRead,
   HunchTrendingEntry,
+  HunchVerifyClaim,
+  HunchVerifyResult,
 } from "../../ports/hunch.js";
 import { HunchApiError } from "../../ports/hunch.js";
 
@@ -28,6 +31,10 @@ export interface MockHunchFixtures {
    * golden tests exercise the full forecast path for any matched market.
    */
   synthesizeQuotes?: boolean;
+  /** JSON(claim) → recorded verify result. Unrecorded claims 404. */
+  verifications?: Record<string, HunchVerifyResult>;
+  /** Uppercased symbol → recorded mint result. Unrecorded symbols 422. */
+  mints?: Record<string, HunchMintResult>;
 }
 
 export class MockHunchApi implements HunchApi {
@@ -84,5 +91,35 @@ export class MockHunchApi implements HunchApi {
   ): Promise<HunchRead<{ count: number; matches: HunchDiscoverMatch[] }>> {
     const found = this.fixtures.discoveries?.[query] ?? { count: 0, matches: [] };
     return this.read(found, `/api/partner/discover?q=${encodeURIComponent(query)}`);
+  }
+
+  async verifyClaim(
+    claim: HunchVerifyClaim,
+  ): Promise<HunchRead<HunchVerifyResult>> {
+    const recorded = this.fixtures.verifications?.[JSON.stringify(claim)];
+    if (!recorded) {
+      throw new HunchApiError(
+        "invalid_claim",
+        422,
+        "https://mock.playhunch.xyz/api/partner/verify",
+      );
+    }
+    return this.read(recorded, "/api/partner/verify");
+  }
+
+  async mint(input: {
+    symbol: string;
+    horizonDays?: number;
+    multiplier?: number;
+  }): Promise<HunchRead<HunchMintResult>> {
+    const recorded = this.fixtures.mints?.[input.symbol.toUpperCase()];
+    if (!recorded) {
+      throw new HunchApiError(
+        "token_not_pinned",
+        422,
+        "https://mock.playhunch.xyz/api/partner/mint",
+      );
+    }
+    return this.read(recorded, "/api/partner/mint");
   }
 }
