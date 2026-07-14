@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   healthPortFromEnv,
   parseServiceMap,
+  suspectServiceIds,
   type OracleEnv,
 } from "../src/config.js";
 
@@ -40,5 +41,40 @@ describe("parseServiceMap", () => {
   it("rejects non-object payloads", () => {
     expect(() => parseServiceMap('"echo"')).toThrow();
     expect(() => parseServiceMap("[1]")).toThrow();
+  });
+
+  it("rejects unsaved CROO draft ids, which silently reject every real order", () => {
+    // This shipped: 8 of 9 listings were mapped under the dialog's draft id, so
+    // the provider loop rejected every negotiation and it read as "no demand".
+    expect(() => parseServiceMap('{"svc-new-1784028805049":"forecast"}')).toThrow(
+      /draft ids/i,
+    );
+    expect(() => parseServiceMap('{"svc-new-1784028805049":"forecast"}')).toThrow(
+      /dashboard/i,
+    );
+  });
+
+  it("accepts a real CROO service UUID", () => {
+    const real = '{"9eccc75e-bc3f-43e3-84a8-153c67a89b75":"portfolio-hedge"}';
+    expect(parseServiceMap(real)).toEqual({
+      "9eccc75e-bc3f-43e3-84a8-153c67a89b75": "portfolio-hedge",
+    });
+  });
+});
+
+describe("suspectServiceIds", () => {
+  it("flags ids that are not CROO UUIDs", () => {
+    expect(
+      suspectServiceIds({
+        "9eccc75e-bc3f-43e3-84a8-153c67a89b75": "portfolio-hedge",
+        svc_1: "echo",
+      }),
+    ).toEqual(["svc_1"]);
+  });
+
+  it("stays quiet when every id is a UUID", () => {
+    expect(
+      suspectServiceIds({ "9eccc75e-bc3f-43e3-84a8-153c67a89b75": "portfolio-hedge" }),
+    ).toEqual([]);
   });
 });

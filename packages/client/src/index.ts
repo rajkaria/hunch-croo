@@ -90,11 +90,19 @@ export class CapClient {
     return { negotiationId };
   }
 
+  /**
+   * List the orders WE placed as the paying side.
+   *
+   * The role value is `buyer`, not `requester`: CAP rejects anything else with
+   * 400 INVALID_PARAMETERS ("role must be 'buyer' or 'provider'"). hire() polls
+   * this on every purchase, so getting it wrong fails every buy, not just this
+   * call.
+   */
   async listRequesterOrders(status?: string): Promise<CapOrderRow[]> {
     const query = status ? `&status=${status}` : "";
     const body = await this.call<{ orders?: CapOrderRow[] }>(
       "GET",
-      `/orders?role=requester&page_size=50${query}`,
+      `/orders?role=buyer&page_size=50${query}`,
     );
     return body.orders ?? [];
   }
