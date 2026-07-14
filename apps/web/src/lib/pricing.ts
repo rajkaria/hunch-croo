@@ -88,4 +88,13 @@ export const SERVICES: ServicePricing[] = [
     example:
       '{"budgetUsd": 30, "positions": [{"marketSlug": "aixbt-50m", "side": "yes", "exposureUsd": 300}, {"marketSlug": "ansem-flip-pump", "side": "no", "exposureUsd": 100}]}',
   },
+  {
+    service: "scorecard",
+    listing: "Hunch Oracle",
+    priceUsd: 0.1,
+    slaMinutes: 5,
+    summary:
+      "The desk's own track record, scored honestly: Brier score, hit-rate and calibration across every delivered forecast that has since resolved, read from an append-only hash-chained ledger.",
+    example: "{}",
+  },
 ];

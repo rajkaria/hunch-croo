@@ -70,4 +70,14 @@ export const SERVICE_PRICING: Record<string, ServicePricing> = {
     summary:
       "Non-custodial basket hedge for a whole book: one budget allocated across many positions, each priced off the live market, with portfolio aggregates and an executable trade call per leg.",
   },
+  // Priced at the CROO floor ($0.10 — a listed service cannot be free). It's a
+  // credibility surface, not a revenue line: buyers pay pocket change to audit
+  // how well-calibrated the desk actually is before trusting a forecast.
+  scorecard: {
+    listing: "Hunch Oracle",
+    priceUsd: 0.1,
+    slaMinutes: 5,
+    summary:
+      "The desk's own track record, scored honestly: Brier score, hit-rate and calibration across every delivered forecast that has since resolved, read from an append-only hash-chained ledger.",
+  },
 };

@@ -10,7 +10,7 @@ import type { ServicePricing } from "../pricing.js";
  */
 export interface RevenueLine {
   service: string;
-  /** Store listing the service ships under, or "unlisted" (echo, scorecard). */
+  /** Store listing the service ships under, or "unlisted" (e.g. the `echo` spike). */
   listing: string;
   delivered: number;
   priceUsd: number;
@@ -27,7 +27,7 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**
  * Roll up delivered-per-service counts into revenue lines. A delivered service
- * with no pricing row (e.g. `echo`, `scorecard` — read-only or free) contributes
+ * with no pricing row (e.g. the `echo` spike) contributes
  * `priceUsd: 0` but is still counted in `delivered`, so the throughput picture
  * stays honest. Lines are sorted by service name for a stable exposition.
  */

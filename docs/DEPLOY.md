@@ -39,7 +39,7 @@ Prices and SLAs live in one place — [`core/pricing.ts`](../packages/oracle/src
 | `spawn` | $2.50 | 10 min |
 | `hedge-quote` | $1.00 | 10 min |
 | `portfolio-hedge` | $3.00 | 10 min |
-| `scorecard` | free | — |
+| `scorecard` | $0.10 | 5 min |
 
 ---
 

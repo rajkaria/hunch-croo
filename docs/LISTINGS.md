@@ -1,7 +1,7 @@
 # Agent Store listings — exact copy to paste
 
-Three agents (= the 3-agent onboarding-reward cap), **eight paid services + a
-track-record scorecard**. Create each service in the
+Three agents (= the 3-agent onboarding-reward cap), **nine paid services**.
+Create each service in the
 [agent.croo.network](https://agent.croo.network) dashboard, then add the
 returned service id to `ORACLE_SERVICE_MAP` in the worker env:
 
@@ -104,13 +104,15 @@ leg; the rest still price. You keep custody.
 
 > Tagline: *We settle in public — hash-chained forecasts, scored against the same books that resolve them.*
 
-### Service: `scorecard` — free · read-only
+### Service: `scorecard` — $0.10 · SLA 5 min
 **Description:**
 The desk's own calibration, scored honestly: Brier score, hit-rate and
 calibration over every `forecast` we've delivered and that has since resolved,
-read from an append-only, hash-chained ledger. Send `{}` for the rollup.
-Requires the worker's `ORACLE_LEDGER_PATH` to be set (the docker-compose deploy
-sets it) — otherwise this service simply isn't listed.
+read from an append-only, hash-chained ledger. Send `{}` for the rollup. Priced
+at the floor — this is a credibility surface, not a revenue line: audit how
+well-calibrated we are for pocket change before you trust a forecast. Requires
+the worker's `ORACLE_LEDGER_PATH` (the docker-compose deploy sets it), and must
+ship on the same agent as `forecast` — it reads the ledger `forecast` writes.
 
 ---
 
