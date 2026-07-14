@@ -9,6 +9,7 @@ import {
   usdcToNumber,
 } from "@/lib/croo";
 import { fetchSpawnedMarkets } from "@/lib/hunch";
+import { PageHero, Section, StatBar, StatCell } from "../_components/Chrome";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,197 +66,80 @@ export default async function DashboardPage() {
 
   return (
     <main>
-      <section className="hero" style={{ padding: "48px 0 32px" }}>
-        <h1 style={{ fontSize: "34px" }}>
-          Live desk — <em>real orders, real USDC, on Base</em>
-        </h1>
-        <p className="sub" style={{ fontSize: "15.5px" }}>
-          Everything below reads from CROO&apos;s public Store API, our provider
-          order feed, and playhunch.xyz — nothing is mocked. Self-trades are
-          labelled: anti-sybil transparency on purpose.
-        </p>
-      </section>
-
-      <section className="grid cols-4" style={{ paddingBottom: 40 }}>
-        <div className="stat">
-          <div className="label">USDC earned</div>
-          <div className="value accent">${earnedUsd.toFixed(2)}</div>
-          <div className="hint">across {liveAgents.length} listed agent(s)</div>
-        </div>
-        <div className="stat">
-          <div className="label">Completed orders</div>
-          <div className="value">{completed}</div>
-          <div className="hint">
-            avg delivery {liveAgents[0]?.avgDeliveryText ?? "—"}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="label">Unique buyers</div>
-          <div className="value">{buyers.size}</div>
-          <div className="hint">{externalBuyers.length} external</div>
-        </div>
-        <div className="stat">
-          <div className="label">Self-trade share</div>
-          <div className="value">{selfShare}%</div>
-          <div className="hint">own-wallet orders, labelled below</div>
-        </div>
-      </section>
-
-      <section className="section" style={{ paddingTop: 40 }}>
-        <h2>Order feed</h2>
-        <p className="lead">
-          Every CAP order our agents have completed — with all four Base
-          transactions (create → pay → deliver → clear) verifiable on Basescan.
-        </p>
-        {orders.length === 0 ? (
-          <div className="card">
-            <p>
-              No completed orders visible yet — the order feed reads the CROO API
-              server-side with our provider keys.
-            </p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Buyer agent</th>
-                  <th>Amount</th>
-                  <th>Delivered</th>
-                  <th>Settlement</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.slice(0, 25).map((order) => (
-                  <tr key={order.orderId}>
-                    <td className="mono">
-                      #{order.chainOrderId || shortId(order.orderId)}
-                    </td>
-                    <td className="mono">
-                      {shortId(order.requesterAgentId)}{" "}
-                      {own.has(order.requesterAgentId) ? (
-                        <span className="pill amber">self</span>
-                      ) : (
-                        <span className="pill green">external</span>
-                      )}
-                    </td>
-                    <td className="mono">
-                      ${usdcToNumber(order.amount).toFixed(2)}
-                    </td>
-                    <td className="mono">
-                      {order.deliveredAt
-                        ? new Date(order.deliveredAt).toISOString().slice(0, 16).replace("T", " ")
-                        : "—"}
-                    </td>
-                    <td className="mono">
-                      {order.clearTxHash ? (
-                        <a
-                          href={basescanTx(order.clearTxHash)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {shortHash(order.clearTxHash)}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="section">
-        <h2>Spawned markets</h2>
-        <p className="lead">
-          Real markets the desk has minted on playhunch.xyz through the
-          production factory — agent demand becoming tradeable instruments.
-        </p>
-        {spawned.length === 0 ? (
-          <div className="card">
-            <p>No spawned markets yet.</p>
-          </div>
-        ) : (
-          <div className="grid cols-3">
-            {spawned.map((market) => (
-              <div className="card" key={market.id}>
-                <h3>
-                  <a href={market.url} target="_blank" rel="noreferrer">
-                    {market.question}
-                  </a>
-                </h3>
-                <p>
-                  {market.odds ? (
-                    <>
-                      <span className="pill green">
-                        YES {market.odds.yesPriceCents}¢
-                      </span>{" "}
-                      <span className="pill dim">
-                        NO {market.odds.noPriceCents}¢
-                      </span>{" "}
-                    </>
-                  ) : null}
-                  <span className="pill dim">${market.poolUsd} pool</span>{" "}
-                  <span className="pill dim">{market.totalBets} bets</span>
-                </p>
-                <p style={{ marginTop: 8, fontSize: 13 }}>
-                  closes {new Date(market.deadlineAt).toISOString().slice(0, 10)} ·{" "}
-                  <span className="mono">{market.status}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="section">
-        <h2>Who we hired</h2>
-        <p className="lead">
-          The desk runs both ways. Our signal-buyer hires external CAP agents —
-          real USDC out, on the same Base rails — and folds their (advisory-only)
-          signals into our own reads. Every hire below seeds another agent&apos;s
-          counterparty count: composability, paid for.
-        </p>
-        {hired.length === 0 ? (
-          <div className="card">
-            <p>
-              No hires settled yet. The signal-buyer runs behind a human-curated
-              allowlist and a hard daily budget cap; hires appear here the moment
-              one clears, read from CROO&apos;s order API with our requester key.
-            </p>
-          </div>
-        ) : (
+      <PageHero
+        kicker="Live dashboard"
+        title={
           <>
-            <p style={{ marginBottom: 16 }}>
-              <span className="pill green">
-                {externalCounterparties.size} external counterparties
-              </span>{" "}
-              <span className="pill dim">${hiredSpendUsd.toFixed(2)} paid out</span>{" "}
-              <span className="pill dim">{hired.length} orders</span>
-            </p>
+            Real orders, real USDC, <em>on Base.</em>
+          </>
+        }
+      >
+        Everything below reads from CROO&apos;s public Store API, our provider
+        order feed, and playhunch.xyz — nothing is mocked. Self-trades are
+        labelled: anti-sybil transparency on purpose.
+      </PageHero>
+
+      <StatBar>
+        <StatCell
+          label="USDC earned"
+          value={`$${earnedUsd.toFixed(2)}`}
+          hint={`across ${liveAgents.length} listed agent(s)`}
+          accent
+        />
+        <StatCell
+          label="Completed orders"
+          value={completed}
+          hint={`avg delivery ${liveAgents[0]?.avgDeliveryText ?? "—"}`}
+        />
+        <StatCell
+          label="Unique buyers"
+          value={buyers.size}
+          hint={`${externalBuyers.length} external`}
+        />
+        <StatCell
+          label="Self-trade share"
+          value={`${selfShare}%`}
+          hint="own-wallet orders, labelled below"
+        />
+      </StatBar>
+
+      <Section index="01" kicker="Order feed">
+        <h2 className="sec-h2 sm">
+          Every CAP order, <em>verifiable on Basescan.</em>
+        </h2>
+        <p className="sec-lead">
+          Every order our agents have completed — with all four Base
+          transactions (create → pay → deliver → clear) verifiable on-chain.
+        </p>
+        <div style={{ marginTop: 32 }}>
+          {orders.length === 0 ? (
+            <div className="card">
+              <p>
+                No completed orders visible yet — the order feed reads the CROO
+                API server-side with our provider keys.
+              </p>
+            </div>
+          ) : (
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Order</th>
-                    <th>Hired agent</th>
-                    <th>Paid</th>
+                    <th>Buyer agent</th>
+                    <th>Amount</th>
+                    <th>Delivered</th>
                     <th>Settlement</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {hired.slice(0, 25).map((order) => (
+                  {orders.slice(0, 25).map((order) => (
                     <tr key={order.orderId}>
                       <td className="mono">
                         #{order.chainOrderId || shortId(order.orderId)}
                       </td>
                       <td className="mono">
-                        {shortId(order.providerAgentId)}{" "}
-                        {own.has(order.providerAgentId) ? (
+                        {shortId(order.requesterAgentId)}{" "}
+                        {own.has(order.requesterAgentId) ? (
                           <span className="pill amber">self</span>
                         ) : (
                           <span className="pill green">external</span>
@@ -263,6 +147,11 @@ export default async function DashboardPage() {
                       </td>
                       <td className="mono">
                         ${usdcToNumber(order.amount).toFixed(2)}
+                      </td>
+                      <td className="mono">
+                        {order.deliveredAt
+                          ? new Date(order.deliveredAt).toISOString().slice(0, 16).replace("T", " ")
+                          : "—"}
                       </td>
                       <td className="mono">
                         {order.clearTxHash ? (
@@ -282,13 +171,141 @@ export default async function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </>
-        )}
-      </section>
+          )}
+        </div>
+      </Section>
 
-      <section className="section">
-        <h2>Listed agents</h2>
-        <div className="grid cols-3">
+      <Section index="02" kicker="Spawned markets" tone="violet">
+        <h2 className="sec-h2 sm">
+          Agent demand, <em>minted into markets.</em>
+        </h2>
+        <p className="sec-lead">
+          Real markets the desk has minted on playhunch.xyz through the
+          production factory — agent demand becoming tradeable instruments.
+        </p>
+        <div style={{ marginTop: 32 }}>
+          {spawned.length === 0 ? (
+            <div className="card">
+              <p>No spawned markets yet.</p>
+            </div>
+          ) : (
+            <div className="grid cols-3">
+              {spawned.map((market) => (
+                <div className="card" key={market.id}>
+                  <h3>
+                    <a href={market.url} target="_blank" rel="noreferrer">
+                      {market.question}
+                    </a>
+                  </h3>
+                  <p>
+                    {market.odds ? (
+                      <>
+                        <span className="pill green">
+                          YES {market.odds.yesPriceCents}¢
+                        </span>{" "}
+                        <span className="pill dim">
+                          NO {market.odds.noPriceCents}¢
+                        </span>{" "}
+                      </>
+                    ) : null}
+                    <span className="pill dim">${market.poolUsd} pool</span>{" "}
+                    <span className="pill dim">{market.totalBets} bets</span>
+                  </p>
+                  <p style={{ marginTop: 8, fontSize: 13 }}>
+                    closes {new Date(market.deadlineAt).toISOString().slice(0, 10)} ·{" "}
+                    <span className="mono">{market.status}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
+
+      <Section index="03" kicker="Who we hired" tone="cyan">
+        <h2 className="sec-h2 sm">
+          The desk runs <em>both ways.</em>
+        </h2>
+        <p className="sec-lead">
+          Our signal-buyer hires external CAP agents — real USDC out, on the
+          same Base rails — and folds their (advisory-only) signals into our own
+          reads. Every hire below seeds another agent&apos;s counterparty count:
+          composability, paid for.
+        </p>
+        <div style={{ marginTop: 32 }}>
+          {hired.length === 0 ? (
+            <div className="card">
+              <p>
+                No hires settled yet. The signal-buyer runs behind a
+                human-curated allowlist and a hard daily budget cap; hires
+                appear here the moment one clears, read from CROO&apos;s order
+                API with our requester key.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p style={{ marginBottom: 16 }}>
+                <span className="pill green">
+                  {externalCounterparties.size} external counterparties
+                </span>{" "}
+                <span className="pill dim">${hiredSpendUsd.toFixed(2)} paid out</span>{" "}
+                <span className="pill dim">{hired.length} orders</span>
+              </p>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Order</th>
+                      <th>Hired agent</th>
+                      <th>Paid</th>
+                      <th>Settlement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hired.slice(0, 25).map((order) => (
+                      <tr key={order.orderId}>
+                        <td className="mono">
+                          #{order.chainOrderId || shortId(order.orderId)}
+                        </td>
+                        <td className="mono">
+                          {shortId(order.providerAgentId)}{" "}
+                          {own.has(order.providerAgentId) ? (
+                            <span className="pill amber">self</span>
+                          ) : (
+                            <span className="pill green">external</span>
+                          )}
+                        </td>
+                        <td className="mono">
+                          ${usdcToNumber(order.amount).toFixed(2)}
+                        </td>
+                        <td className="mono">
+                          {order.clearTxHash ? (
+                            <a
+                              href={basescanTx(order.clearTxHash)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {shortHash(order.clearTxHash)}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </Section>
+
+      <Section index="04" kicker="Listed agents">
+        <h2 className="sec-h2 sm">
+          Three sellers, <em>one desk.</em>
+        </h2>
+        <div className="grid cols-3" style={{ marginTop: 32 }}>
           {liveAgents.map((agent) => (
             <div className="card" key={agent.agentId}>
               <h3>
@@ -315,13 +332,13 @@ export default async function DashboardPage() {
           ))}
         </div>
         {platform ? (
-          <p style={{ color: "var(--text-faint)", fontSize: 13, marginTop: 16 }}>
+          <p style={{ color: "var(--text-faint)", fontSize: 13, marginTop: 20 }}>
             CROO network context: {platform.totalAgents} agents ·{" "}
             {platform.totalServices} services · {platform.totalOrders} orders
             settled platform-wide.
           </p>
         ) : null}
-      </section>
+      </Section>
     </main>
   );
 }
