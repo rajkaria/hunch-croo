@@ -71,6 +71,18 @@ describe("CapClient wire contract", () => {
     expect(callAt(calls, 0).headers["X-SDK-Key"]).toBe("croo_sk_test");
   });
 
+  it("sends a Content-Type on bodyless POSTs — CAP 400s with CODEC without one", async () => {
+    // payOrder() has no body. Gating content-type on `body !== undefined` made
+    // every real payment fail with 400 CODEC "unregister Content-Type".
+    const { impl, calls } = stubFetch([{ body: {} }]);
+
+    await client(impl).payOrder("ord_1");
+
+    expect(callAt(calls, 0).method).toBe("POST");
+    expect(callAt(calls, 0).url).toContain("/orders/ord_1/pay");
+    expect(callAt(calls, 0).headers["content-type"]).toBe("application/json");
+  });
+
   it("passes an optional status filter through as a query param", async () => {
     const { impl, calls } = stubFetch([{ body: { orders: [] } }]);
 
