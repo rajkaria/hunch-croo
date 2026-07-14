@@ -8,6 +8,17 @@ updated: 2026-07-14
 
 # Web experience — landing overhaul + A2A surfaces (S16)
 
+> **S17 redesign (2026-07-14, `0c5a625`):** the whole web app was rebuilt on a
+> full-bleed editorial design system after the boxed `.shell { max-width:1080px }`
+> layout left dead gutters on wide screens. Sections/hairlines/glows/market tape
+> now span the viewport; content sits in a 1400px frame with page-height rails
+> ≥1480px. Identity: Instrument Serif italic accent words + tight Inter display +
+> mono data; numbered sections with sticky side labels; full-bleed stat strips;
+> serif-watermark footer. All six pages share `_components/Chrome.tsx`
+> (PageHero/Section/StatBar). Class vocabulary in this doc's older sections
+> (`.shell`, `.hero`, `.section`, `.stat`, `.lp-stats`) is superseded by
+> `.inner`, `.sec/.sec-grid`, `.statbar`, `.page-hero` in `globals.css`.
+
 The judge-facing (and agent-facing) layer over the deployed desk. Built after
 S15 put all four processes ONLINE on Railway. Targets the hackathon rubric
 directly: A2A Composability 25% (`/network`), Technical Execution 30%
