@@ -19,12 +19,27 @@ updated: 2026-07-14
 
 # Hosting — get the CROO agents ONLINE (S15)
 
-Merged to `main` as `2f4ff8b` (2026-07-14). Gate green: typecheck + **256 tests**.
+Merged to `main` (`2f4ff8b`, hotfix `68d42b7`). Gate green: typecheck + **256 tests**.
 
 ## Current state — what's working, deployed, broken
 
-**The diagnosis.** The CROO agent dashboard showed two agents OFFLINE with ~$0
-activity. Two independent causes, neither a code bug:
+**🟢 DEPLOYED AND ONLINE (2026-07-14).** All four processes run on Railway, project
+**energetic-benevolence** (`117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
+rajkaria98@gmail.com), deploying from `main`. All three sellers log
+`websocket connected` — that WS *is* the ONLINE signal — and `buyer` loops in
+dry-run (`live: false, spentUsd: 0`). The Docker image is **no longer unverified**:
+it builds on Railway's builder (`rm -rf apps examples` runs, install is filtered).
+Nothing has been hired yet (`listed orders: 0`), which is the expected idle state.
+
+| Railway service | Config | Notes |
+|---|---|---|
+| `worker-oracle` | root `railway.json` | volume at `/app/data` (the ledger); `ORACLE_LEDGER_PATH` set |
+| `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — correct, the ledger is Oracle's |
+| `worker-marketdesk` | root `railway.json` | hedge caps set |
+| `buyer` | `railway.buyer.json` (config-as-code path) | dry-run until `SIGNAL_BUYER_ENABLED=true` |
+
+**The diagnosis (historical).** The CROO agent dashboard showed two agents OFFLINE
+with ~$0 activity. Two independent causes, neither a code bug:
 
 1. **Nothing hosted the worker.** The desk is a long-lived process whose live
    WebSocket to CROO *is* the ONLINE signal (`worker/main.ts` → `ProviderLoop`).
@@ -61,9 +76,22 @@ run the Dockerfile's install, `pnpm -r start`), so the diagnosis is not a guess.
 Root cause is a host-side Start Command override; the fix makes **every** plausible
 start command land on the worker (see Key decisions).
 
-**Unverified:** the Docker image *build* itself — still no Docker daemon in the dev
-sandbox. The image's `pnpm` behaviour is verified by faithful simulation (same
-install command, same pruned layout), but `docker build` has never been run.
+**Then it crashed again on missing keys — and that's the Railway gotcha to remember.**
+The compose-only names (`CROO_ORACLE_SDK_KEY`, `CROO_TRUTHCHECK_SDK_KEY`,
+`CROO_MARKETDESK_SDK_KEY`) exist **only in `docker-compose.yml`**, which maps them
+into the real var (`CROO_SDK_KEY: ${CROO_ORACLE_SDK_KEY}`). Railway has no such
+indirection: setting `CROO_ORACLE_SDK_KEY` on a Railway service leaves `CROO_SDK_KEY`
+undefined and the worker dies in `readEnv()` (`ZodError … 'Required'`) before opening
+the socket. On the two workers whose deploy had a healthcheck this surfaced as
+"1/1 replicas never became healthy" — the same crash seen through `/healthz`.
+Resolved by pointing the real var at the existing one with Railway's reference syntax,
+which also keeps rotation to a one-liner:
+
+    railway variables --set 'CROO_SDK_KEY=${{CROO_ORACLE_SDK_KEY}}' -s worker-oracle
+
+`buyer` gets `CROO_SDK_KEY=${{CROO_REQUESTER_SDK_KEY}}` — the schema demands a
+`CROO_SDK_KEY`, but the loop hires with `CROO_REQUESTER_SDK_KEY`, and handing it a
+*seller* key would let it try to hire itself.
 
 ## Recent changes — files touched and why
 
@@ -150,24 +178,38 @@ install command, same pruned layout), but `docker build` has never been run.
   `ORACLE_HEALTH_PORT ?? PORT` serves both — and on Railway, setting
   `ORACLE_HEALTH_PORT` would break the platform healthcheck (it'd win over `PORT`,
   and Railway would probe a closed port). Documented in DEPLOY.md.
+- **Railway env vars are the RAW names — compose's indirection does not exist there.**
+  Set `CROO_SDK_KEY` (via a `${{COMPOSE_NAME}}` reference so one value serves both
+  worlds), never assume `CROO_ORACLE_SDK_KEY` alone is enough. This cost a deploy.
+- **What the Railway CLI can and cannot do** (4.36): ✅ create services (`railway add
+  -s`), set/delete variables, add volumes, read logs/status. ❌ link a GitHub repo
+  (`--repo` → `Unauthorized`), set a start command or config-as-code path, delete a
+  service — all dashboard-only. Plan any future Railway work around that split.
 
 ## Next steps — specific, actionable
 
-1. **Redeploy on Railway with the fix.** FOUR Railway services from this repo (one
-   per process — Railway has no compose): three workers on `railway.json` +
-   `buyer` on `railway.buyer.json`, each with its own `CROO_SDK_KEY` +
-   `ORACLE_SERVICE_MAP`, Root Directory `/`, **Start Command box left empty**, and
-   a Volume at `/app/data` on `worker-oracle` only (the ledger). Full table in
-   `docs/DEPLOY.md` → Railway. Verify: `/healthz` → `"connected": true`.
-2. **Rotate the three seller SDK keys.** They were pasted into a chat transcript on
-   2026-07-14. Regenerate in the CROO dashboard, update `.env` and the host's
-   variables, redeploy. Do this *after* hosting — don't let it block step 1.
+Hosting is DONE — the agents are ONLINE. What's left:
+
+1. **Rotate the three seller SDK keys.** They were pasted into a chat transcript on
+   2026-07-14. Regenerate in the CROO dashboard, update `.env`, then per service:
+   `railway variables --set 'CROO_ORACLE_SDK_KEY=<new>' -s worker-oracle` —
+   `CROO_SDK_KEY` follows automatically via the `${{…}}` reference, and the `--set`
+   triggers the redeploy.
+2. **Delete the two junk Railway services** — `@hunch/oracle-web` and
+   `degen-trader-example` (Railway auto-created them from workspace package names;
+   `@hunch/oracle-web` is the one that crash-looped), plus `probe-svc`. Dashboard
+   only — the CLI has no service-delete.
 3. **Confirm the CROO dashboard prices match `core/pricing.ts`** — specifically
    `portfolio-hedge` = $3.00 and `scorecard` = $0.10. A mismatch silently corrupts
    the booked-revenue metric.
-4. **`docker build` the image once for real** — it has never been built (no Docker
-   in the dev sandbox). Any fix belongs in the root `Dockerfile`.
-5. **(Later) Take the buyer live.** It deploys in dry-run and spends nothing. To
-   arm it: fill `SIGNAL_BUYER_ALLOWLIST` with vetted counterparties, set
+4. **Watch for the first real order.** All three sellers idle at
+   `listed orders: 0`. `railway logs -s worker-oracle` is the fastest look; each
+   worker also serves `/metrics` (Prometheus) and `/status` on its Railway port.
+5. **(Later) Take the buyer live.** It runs in dry-run and spends nothing. To arm
+   it: fill `SIGNAL_BUYER_ALLOWLIST` with vetted counterparties, set
    `SIGNAL_BUYER_ENABLED=true`. Caps: $5/UTC-day, $1/order. Leave off until the
    sellers have proven themselves.
+6. **(Optional) A docs-only push to `main` redeploys all four services.** Harmless
+   (a few seconds of reconnect), but `build.watchPatterns` in `railway.json` would
+   stop it. Not done deliberately — a wrong pattern list silently ships stale code,
+   which is worse than a restart.

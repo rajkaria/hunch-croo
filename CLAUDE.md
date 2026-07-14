@@ -17,7 +17,7 @@ ports/adapters/core, mock-tested), `packages/client` (npm CAP client), `apps/web
 | [docs/context/observability.md](docs/context/observability.md) | S12 observability: dependency-free Prometheus `/metrics` (`core/metrics/**`), booked-revenue accounting, per-service delivery counter, `/metrics` web page |
 | [docs/context/portfolio-hedge.md](docs/context/portfolio-hedge.md) | S13 portfolio-hedge: shared `core/hedge/leg.ts` `priceLeg`, deterministic allocator, `portfolio-hedge` service + correlation flag (also covers `hedge-quote.ts`) |
 | [docs/context/py-client.md](docs/context/py-client.md) | S14 Python SDK: `packages/py-client` (zero-dep stdlib CAP client), unittest suite, CI `py-client` job |
-| [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting: root `Dockerfile` + `docker-compose.yml` (3 seller workers, one per CROO agent, + cap-safe `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md` runbook |
+| [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting: root `Dockerfile` + `docker-compose.yml` + `railway*.json` (3 seller workers, one per CROO agent, + cap-safe `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md` runbook. **Live on Railway — agents ONLINE** |
 
 ## Hosting
 
@@ -38,9 +38,9 @@ worker, and the image prunes `apps/` so recursion can't reach `next`.
 
 Sprint history (S0–S14) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
 SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
-Roadmap **S11→S14 complete** (built 2026-07-06); no S15 defined — a "continue"
-next session needs a fresh brainstorm.
+Roadmap **S11→S15 complete**; no S16 defined — a "continue" next session needs a
+fresh brainstorm.
 
-Branch topology: `main` is at S14 (S11→S14 merged 2026-07-06). The old sprint
-branches (`claude/stoic-carson-602b4d`, `claude/reverent-shirley-ac533f`, etc.)
-are fully merged and safe to prune.
+Branch topology: `main` is at S15 + the Railway hosting hotfix (`68d42b7`,
+2026-07-14). Old sprint branches (`claude/stoic-carson-602b4d`,
+`claude/reverent-shirley-ac533f`, etc.) are fully merged and safe to prune.
