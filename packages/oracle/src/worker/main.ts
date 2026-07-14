@@ -19,7 +19,7 @@ import { buildMetrics } from "../core/metrics/snapshot.js";
 import { formatPrometheus } from "../core/metrics/registry.js";
 import { SERVICE_PRICING } from "../core/pricing.js";
 import type { LedgerStore } from "../ports/ledger.js";
-import { parseServiceMap, readEnv } from "../config.js";
+import { healthPortFromEnv, parseServiceMap, readEnv } from "../config.js";
 import { consoleLogger, systemClock, systemSleeper } from "../ports/runtime.js";
 import { startHealthServer, type MetricsProvider } from "./health-server.js";
 
@@ -126,10 +126,12 @@ async function main() {
   };
 
   // Optional ops server: JSON /status + /healthz for uptime checks, and the
-  // Prometheus /metrics endpoint for Grafana — all on ORACLE_HEALTH_PORT.
+  // Prometheus /metrics endpoint for Grafana. ORACLE_HEALTH_PORT, else the
+  // PaaS-injected PORT (Railway/Render/Fly healthcheck), else no server.
+  const healthPort = healthPortFromEnv(env);
   const healthServer =
-    env.ORACLE_HEALTH_PORT !== undefined
-      ? startHealthServer(loop, env.ORACLE_HEALTH_PORT, logger, metricsProvider)
+    healthPort !== undefined
+      ? startHealthServer(loop, healthPort, logger, metricsProvider)
       : null;
 
   // periodic sweep as a WS-drop / missed-event safety net

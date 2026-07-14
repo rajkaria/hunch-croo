@@ -6,7 +6,9 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "gate": "pnpm typecheck && pnpm test"
+    "gate": "pnpm typecheck && pnpm test",
+    "start": "pnpm --filter @hunch/oracle worker",
+    "start:buyer": "pnpm --filter @hunch/oracle signal-buyer-loop"
   },
   "packageManager": "pnpm@9.15.0"
 }

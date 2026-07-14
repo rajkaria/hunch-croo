@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "worker": "tsx src/worker/main.ts",
+    "start": "tsx src/worker/main.ts",
     "spike:requester": "tsx src/worker/spike-requester.ts",
     "signal-buyer": "tsx src/worker/signal-buyer.ts",
     "signal-buyer-loop": "tsx src/worker/signal-buyer-loop.ts",

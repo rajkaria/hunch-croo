@@ -41,6 +41,12 @@ const EnvSchema = z.object({
   ORACLE_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   /** If set, expose a JSON /healthz + /status server on this port. */
   ORACLE_HEALTH_PORT: z.coerce.number().int().positive().optional(),
+  /**
+   * PaaS hosts (Railway, Render, Fly, …) inject the port to bind as `PORT` and
+   * route their platform healthcheck at it. Used only as the fallback when
+   * ORACLE_HEALTH_PORT is unset — see `healthPortFromEnv`.
+   */
+  PORT: z.coerce.number().int().positive().optional(),
 
   // ── S11 track-record scorecard ───────────────────────────────────────────
   /**
@@ -97,6 +103,15 @@ export type OracleEnv = z.infer<typeof EnvSchema>;
 export function readEnv(): OracleEnv {
   loadEnv();
   return EnvSchema.parse(process.env);
+}
+
+/**
+ * Port for the ops server (/healthz, /status, /metrics), or undefined to not
+ * run one. Explicit ORACLE_HEALTH_PORT wins; otherwise we take the PaaS-injected
+ * PORT, so a Railway/Render/Fly healthcheck reaches us without extra config.
+ */
+export function healthPortFromEnv(env: OracleEnv): number | undefined {
+  return env.ORACLE_HEALTH_PORT ?? env.PORT;
 }
 
 export function parseServiceMap(raw: string): Record<string, string> {

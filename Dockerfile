@@ -20,6 +20,13 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile --filter @hunch/oracle...
 
+# Drop the workspace packages this image never runs. `apps/web` is a Next.js
+# surface (deployed separately) whose deps the filtered install above skips —
+# leaving it here means any recursive script run (`pnpm -r start`, which some
+# PaaS builders inject as the default start command) walks into it and dies on
+# `next: not found`. The worker image has no business shipping it.
+RUN rm -rf apps examples
+
 # Track-record ledger lives here; the compose file mounts a named volume so it
 # survives restarts. Owned by the unprivileged `node` user we drop to below.
 RUN mkdir -p /app/data && chown -R node:node /app
@@ -27,7 +34,10 @@ USER node
 
 ENV NODE_ENV=production
 # Ops server: JSON /healthz + /status and the Prometheus /metrics exposition.
-ENV ORACLE_HEALTH_PORT=8080
+# Bound to PORT, not ORACLE_HEALTH_PORT, so a PaaS that injects its own PORT
+# (Railway, Render, Fly) overrides this and its healthcheck reaches us. Compose
+# still pins an explicit ORACLE_HEALTH_PORT per worker, which wins over PORT.
+ENV PORT=8080
 EXPOSE 8080
 
 # Default to the provider desk (shows the agent ONLINE on CROO); the compose

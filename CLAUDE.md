@@ -30,6 +30,12 @@ one seller worker **per CROO agent** (`worker-oracle` :8080, `worker-truthcheck`
 Nine services listed; `scorecard` is priced at the $0.10 CROO floor and must stay on
 the Oracle agent. Listing copy in `docs/LISTINGS.md`.
 
+On Railway it's four services (no compose): `railway.json` (workers) +
+`railway.buyer.json` pin the Dockerfile builder and start command — **never type a
+Start Command into the dashboard**; a recursive `pnpm -r start` is what crashed the
+first deploy. Every start path (`CMD`, `pnpm start`, `pnpm -r start`) now boots the
+worker, and the image prunes `apps/` so recursion can't reach `next`.
+
 Sprint history (S0–S14) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
 SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
 Roadmap **S11→S14 complete** (built 2026-07-06); no S15 defined — a "continue"

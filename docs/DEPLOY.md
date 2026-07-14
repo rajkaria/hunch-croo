@@ -158,6 +158,65 @@ the host's dashboard.
 **Vercel will not work** — it's serverless and cannot hold a long-lived
 WebSocket open. The ONLINE signal dies the moment the function returns.
 
+### Railway
+
+Railway has no compose file — **one Railway service per process**, so you create
+four, all from this same repo and Dockerfile, differing only in env vars:
+
+| Railway service | Config-as-code path | Env vars to set |
+|---|---|---|
+| `worker-oracle` | `railway.json` | `CROO_SDK_KEY` = the Oracle key, `ORACLE_SERVICE_MAP` = the Oracle map, `ORACLE_LEDGER_PATH=/app/data/track-record.jsonl` |
+| `worker-truthcheck` | `railway.json` | `CROO_SDK_KEY` / `ORACLE_SERVICE_MAP` for TruthCheck |
+| `worker-marketdesk` | `railway.json` | `CROO_SDK_KEY` / `ORACLE_SERVICE_MAP` for Market Desk |
+| `buyer` | `railway.buyer.json` | `CROO_SDK_KEY` = **any** seller key (unused by the loop; the schema requires one), `CROO_REQUESTER_SDK_KEY` = the buyer key, plus the `SIGNAL_BUYER_*` caps |
+
+Per service, in **Settings**:
+
+- **Root Directory** `/` — the `Dockerfile` lives at the repo root; a subdirectory
+  root makes Railway miss it and fall back to a Node buildpack.
+- **Config-as-code** → the path above. [`railway.json`](../railway.json) pins the
+  Dockerfile builder, the start command, and a `/healthz` healthcheck;
+  [`railway.buyer.json`](../railway.buyer.json) swaps in the buyer loop and drops
+  the healthcheck (the buyer is a loop, not a server — it has no port to check).
+- **Leave the Start Command box empty.** Config-as-code and the image `CMD`
+  already set it, and a hand-typed one silently overrides both. See the
+  troubleshooting entry below — that is exactly how this breaks.
+- `worker-oracle` only: add a **Volume** mounted at `/app/data`. That's the
+  hash-chained forecast ledger `scorecard` reads; without it, redeploying wipes
+  the track record. The other three are stateless.
+
+Railway injects `PORT` and healthchecks it. The worker binds it automatically
+(`healthPortFromEnv` in [`config.ts`](../packages/oracle/src/config.ts)), so
+`/healthz`, `/status` and `/metrics` come up on Railway's port with no extra
+config. Don't set `ORACLE_HEALTH_PORT` on Railway — it would win over `PORT` and
+the platform healthcheck would hit a closed port and kill the deploy.
+
+`/healthz` returns `200` only while the CROO WebSocket is connected, so a Railway
+deploy that goes green *is* the agent showing ONLINE.
+
+## Troubleshooting
+
+### `sh: 1: next: not found` / `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL … @hunch/oracle-web start: next start`
+
+The host is not running the image's `CMD`. It ran a **recursive** start
+(`pnpm -r start`), which fans out across every workspace package and walks into
+`apps/web` — the Next.js surface, which is deployed separately and whose deps the
+image deliberately does not install (`--filter @hunch/oracle...`), hence
+`next: not found`. The worker never boots and the agent stays OFFLINE.
+
+Almost always a **Start Command typed into the host's dashboard**, overriding both
+the config file and the image `CMD`. Clear it, and let one of these run instead:
+
+| Command | Result |
+|---|---|
+| *(empty — the image `CMD`)* | `pnpm --filter @hunch/oracle worker` ✅ |
+| `pnpm start` | root script → the worker ✅ |
+| `pnpm -r start` | only `@hunch/oracle` has a `start` script → the worker ✅ |
+
+All three now land on the worker: the root `package.json` has a `start` script,
+`@hunch/oracle` has one too, and the image prunes `apps/` and `examples/` after
+install — so no recursive script run can reach `next` even if a host injects one.
+
 ## Notes
 
 - **No build step.** The image runs TypeScript on `tsx` (a devDependency), so the
