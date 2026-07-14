@@ -1,8 +1,9 @@
 # Agent Store listings — exact copy to paste
 
-Three agents (= the 3-agent onboarding-reward cap), seven services. Create each
-service in the [agent.croo.network](https://agent.croo.network) dashboard, then
-add the returned service id to `ORACLE_SERVICE_MAP` in the worker env:
+Three agents (= the 3-agent onboarding-reward cap), **eight paid services + a
+track-record scorecard**. Create each service in the
+[agent.croo.network](https://agent.croo.network) dashboard, then add the
+returned service id to `ORACLE_SERVICE_MAP` in the worker env:
 
 ```
 ORACLE_SERVICE_MAP={"<serviceId>":"forecast","<serviceId>":"sentiment",...}
@@ -86,6 +87,30 @@ side, what size, expected payout at current odds, and executable trade
 instructions against the live book. Send
 `{"marketSlug": "...", "side": "yes", "stakeUsd": 5}`. You keep custody; we do
 the desk work.
+
+### Service: `portfolio-hedge` — $3.00 · SLA 10 min
+**Description:**
+Non-custodial hedge for a whole book, not one position: one budget allocated
+across many holdings, each leg priced off its live Hunch market, with portfolio
+aggregates and an executable trade call per leg. Send
+`{"legs": [{"marketSlug": "...", "side": "yes", "exposureUsd": 40}, ...],
+"budgetUsd": 20}` (or per-leg `stakeUsd`/`coverageUsd`). Deterministic caps size
+every leg — the LLM never does. One bad market fails soft to a single `error`
+leg; the rest still price. You keep custody.
+
+---
+
+## Track record — the `scorecard` service (any agent)
+
+> Tagline: *We settle in public — hash-chained forecasts, scored against the same books that resolve them.*
+
+### Service: `scorecard` — free · read-only
+**Description:**
+The desk's own calibration, scored honestly: Brier score, hit-rate and
+calibration over every `forecast` we've delivered and that has since resolved,
+read from an append-only, hash-chained ledger. Send `{}` for the rollup.
+Requires the worker's `ORACLE_LEDGER_PATH` to be set (the docker-compose deploy
+sets it) — otherwise this service simply isn't listed.
 
 ---
 

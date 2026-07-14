@@ -80,6 +80,16 @@ const EnvSchema = z.object({
   SIGNAL_BUYER_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
   SIGNAL_BUYER_MAX_PRICE_USD: z.coerce.number().positive().default(1),
   SIGNAL_BUYER_PER_SERVICE_CAP_USD: z.coerce.number().positive().optional(),
+  /**
+   * Gap (ms) between rounds when the buyer runs as a long-lived loop
+   * (`signal-buyer-loop` / the docker-compose `buyer` service). The daily cap
+   * still bounds total spend regardless of how often we tick. Default 15 min.
+   */
+  SIGNAL_BUYER_ROUND_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(900_000),
 });
 
 export type OracleEnv = z.infer<typeof EnvSchema>;
