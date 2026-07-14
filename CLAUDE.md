@@ -18,7 +18,7 @@ ports/adapters/core, mock-tested), `packages/client` (npm CAP client), `apps/web
 | [docs/context/portfolio-hedge.md](docs/context/portfolio-hedge.md) | S13 portfolio-hedge: shared `core/hedge/leg.ts` `priceLeg`, deterministic allocator, `portfolio-hedge` service + correlation flag (also covers `hedge-quote.ts`) |
 | [docs/context/py-client.md](docs/context/py-client.md) | S14 Python SDK: `packages/py-client` (zero-dep stdlib CAP client), unittest suite, CI `py-client` job |
 | [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting: root `Dockerfile` + `docker-compose.yml` + `railway*.json` (3 seller workers, one per CROO agent, + cap-safe `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md` runbook. **Live on Railway — agents ONLINE** |
-| [docs/context/web-experience.md](docs/context/web-experience.md) | S16 web: premium landing overhaul (live agent band, use cases, arch/calibration/network SVGs), `/network` A2A graph page, agent-readable `/llms.txt` + `/api/catalog`, `docs/VISION.md` |
+| [docs/context/web-experience.md](docs/context/web-experience.md) | S16–S17 web: full-bleed editorial design system (S17 redesign, all six pages, shared `Chrome.tsx`), live-data landing, `/network` A2A graph page, agent-readable `/llms.txt` + `/api/catalog`, `docs/VISION.md` |
 
 ## Hosting
 
@@ -39,9 +39,10 @@ worker, and the image prunes `apps/` so recursion can't reach `next`.
 
 Sprint history (S0–S14) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
 SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
-Roadmap **S11→S16 complete** (S16 = web experience + A2A surfaces +
-`docs/VISION.md`). Remaining pre-submission work is operational, not code:
-flip `SIGNAL_BUYER_ENABLED=true`, seed 10+ real CAP orders, record the demo
+Roadmap **S11→S17 complete** (S16 = web experience + A2A surfaces +
+`docs/VISION.md`; S17 = full-bleed web redesign, live on prod). Remaining
+pre-submission work is operational, not code: flip
+`SIGNAL_BUYER_ENABLED=true`, seed 10+ real CAP orders, record the demo
 video, file the DoraHacks BUIDL.
 
 The **web app deploys separately to Vercel** (project `hunch-oracle-desk`,
@@ -49,7 +50,7 @@ git-connected to `main` → auto-deploys prod). Live at **oracle.playhunch.xyz**
 the raw `*.vercel.app` URL is behind deployment protection (302) — verify
 against the custom domain.
 
-Branch topology: `main` is at S16 (`b34a84d`, 2026-07-14) — S15 hosting +
-the web-experience sprint, both live. Old sprint branches
-(`claude/exciting-heyrovsky-6f3353`, `claude/stoic-carson-602b4d`,
-`claude/reverent-shirley-ac533f`, etc.) are fully merged and safe to prune.
+Branch topology: `main` is at S17 (`f7e651e`, 2026-07-14) — the full-bleed
+web redesign, deployed. Old sprint branches
+(`claude/hunch-oracle-redesign-fc2a80`, `claude/exciting-heyrovsky-6f3353`,
+`claude/stoic-carson-602b4d`, etc.) are fully merged and safe to prune.
