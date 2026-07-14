@@ -468,8 +468,8 @@ export default async function LandingPage() {
   const grouped = LISTINGS.map((l) => ({
     ...l,
     services: SERVICES.filter((s) => s.listing === l.name) as ServicePricing[],
-    live: liveAgents.find((a) =>
-      a.name?.toLowerCase().includes(l.name.replace("Hunch ", "").toLowerCase()),
+    live: liveAgents.find(
+      (a) => a.name?.trim().toLowerCase() === l.name.toLowerCase(),
     ),
   }));
 

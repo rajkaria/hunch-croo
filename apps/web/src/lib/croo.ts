@@ -11,9 +11,26 @@
 
 const CROO_API = process.env.CROO_API_URL ?? "https://api.croo.network";
 
+/**
+ * The desk's three listed seller agents, as registered on the CROO store in
+ * S15. These ids are public (anyone can read them off the Agent Store), so the
+ * default is the real thing — the surfaces render live without any env config.
+ */
+const SELLER_AGENT_IDS = [
+  "10582fea-07e1-423c-bc3b-dfa02de2691f", // Hunch Oracle
+  "990fa2a5-9be6-4632-864c-c8d23a09048f", // Hunch TruthCheck
+  "d019b1ba-c933-4137-8cbc-30d37126ee50", // Hunch Market Desk
+].join(",");
+
+/** The S0 test agent ("Hunch") and the signal-buyer's requester agent. */
+const LEGACY_OWN_AGENT_IDS = [
+  "013febe1-f57a-445d-95f4-adf2931bd2f9", // "Hunch" — S0 echo-service agent
+  "b373b1bc-d960-491e-bb52-3fba07635f55", // hunch-buyer (requester)
+].join(",");
+
 /** The desk's listed agent ids (Oracle, TruthCheck, Market Desk), env-overridable. */
 export function agentIds(): string[] {
-  return (process.env.CROO_AGENT_IDS ?? "013febe1-f57a-445d-95f4-adf2931bd2f9")
+  return (process.env.CROO_AGENT_IDS ?? SELLER_AGENT_IDS)
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -42,8 +59,7 @@ export function requesterKeys(): string[] {
 export function ownAgentIds(): Set<string> {
   const raw =
     process.env.CROO_OWN_AGENT_IDS ??
-    // Hunch provider agent + hunch-buyer requester agent (defaults from S0).
-    "013febe1-f57a-445d-95f4-adf2931bd2f9,b373b1bc-d960-491e-bb52-3fba07635f55";
+    `${SELLER_AGENT_IDS},${LEGACY_OWN_AGENT_IDS}`;
   return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
 }
 
