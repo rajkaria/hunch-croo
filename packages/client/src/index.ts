@@ -64,7 +64,10 @@ export class CapClient {
       method,
       headers: {
         "X-SDK-Key": this.key,
-        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        // CAP demands a Content-Type on EVERY POST, including bodyless ones —
+        // omitting it fails the call with 400 CODEC ("unregister Content-Type").
+        // payOrder() is bodyless, so gating this on `body` broke every payment.
+        "content-type": "application/json",
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
