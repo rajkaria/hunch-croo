@@ -22,6 +22,13 @@ resolution (Brier, log-loss, calibration). The `scorecard` CAP service + `/score
 web page publish the aggregate + a pinnable head hash. Design spec:
 `docs/superpowers/specs/2026-07-06-s11-track-record-scorecard-design.md`.
 
+> **S15 update (2026-07-14):** `scorecard` is now a **listed, priced** CROO service
+> at **$0.10** (the CROO floor — a listed service cannot be free), with a row in
+> `core/pricing.ts` + the `apps/web/src/lib/pricing.ts` mirror, so it books real
+> revenue. It **must ship on the same CROO agent as `forecast`** (Hunch Oracle):
+> it scores forecasts out of the ledger the forecast handler writes, so they share
+> a worker and its volume. See [hosting-deploy.md](hosting-deploy.md).
+
 ## Current state — what's working, deployed, broken
 - **Complete and committed** (`81d25d3`; spec `4c17c17`). `pnpm gate` green: 201 tests
   (49 new, 23 files), typecheck clean across oracle + web + client.
