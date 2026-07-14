@@ -44,6 +44,12 @@ Roadmap **S11→S16 complete** (S16 = web experience + A2A surfaces +
 flip `SIGNAL_BUYER_ENABLED=true`, seed 10+ real CAP orders, record the demo
 video, file the DoraHacks BUIDL.
 
-Branch topology: `main` is at S15 + the Railway hosting hotfix (`68d42b7`,
-2026-07-14). Old sprint branches (`claude/stoic-carson-602b4d`,
+The **web app deploys separately to Vercel** (project `hunch-oracle-desk`,
+git-connected to `main` → auto-deploys prod). Live at **oracle.playhunch.xyz**;
+the raw `*.vercel.app` URL is behind deployment protection (302) — verify
+against the custom domain.
+
+Branch topology: `main` is at S16 (`b34a84d`, 2026-07-14) — S15 hosting +
+the web-experience sprint, both live. Old sprint branches
+(`claude/exciting-heyrovsky-6f3353`, `claude/stoic-carson-602b4d`,
 `claude/reverent-shirley-ac533f`, etc.) are fully merged and safe to prune.

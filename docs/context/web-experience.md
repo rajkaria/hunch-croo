@@ -13,60 +13,97 @@ S15 put all four processes ONLINE on Railway. Targets the hackathon rubric
 directly: A2A Composability 25% (`/network`), Technical Execution 30%
 (live-data landing), Presentation 10% (premium design), plus the VISION doc.
 
-## What exists
+## Current state — what's working, deployed, broken
 
-**Landing page** (`apps/web/src/app/page.tsx`, async server component,
-`revalidate = 120`):
+**🟢 LIVE ON PROD.** Merged to `main` (`74b2fb5` + fix `b34a84d`) and deployed:
 
-- Hero (unchanged concept) + eyebrow that shows a **live online-agent count**
-  read from CROO's public API (`agentIds()` in `lib/croo.ts`; graceful
-  fallback to "Live on Base" when unreachable).
-- **Live agents band** — three cards (Oracle/TruthCheck/MarketDesk) with real
-  `onlineStatus`, completed orders, USDC earned; Railway port shown per worker.
-- Stats band (now 9 skills / 256 tests), how-it-works, flywheel (kept).
-- **Desk menu** — fixed "Eight→Nine priced skills"; each service card now shows
-  its example requirements JSON (`lp-svc-example`).
-- **Use cases** (`lp-uc-grid`) — 4 buyer personas: trading agent, research
-  agent, autonomous fund, watchtower.
-- **Architecture diagram** (`ArchDiagram`, animated SVG) — any CAP agent →
-  CROO store → Railway box (3 workers + signal-buyer) → playhunch.xyz / Base /
-  receipts; plus an 8-item `SPECS` grid.
-- **Track record section** — hash-chained ledger copy + `CalibrationArt` SVG,
-  links /scorecard + /metrics.
-- **A2A section** — `NetworkArt` constellation SVG + link to `/network`.
+- **Web:** Vercel project **`hunch-oracle-desk`** (acct `rajkaria67-1831`),
+  git-connected to `main` — a push to main auto-deploys production. Custom
+  domain **https://oracle.playhunch.xyz** (200 on all 8 routes: `/`,
+  `/network`, `/dashboard`, `/scorecard`, `/metrics`, `/docs`, `/llms.txt`,
+  `/api/catalog`). The raw `*.vercel.app` project URL 302s (deployment
+  protection) — **always verify against the custom domain**, not the
+  vercel.app URL.
+- **Agents:** all three sellers are **ONLINE** on the CROO store. The prod
+  hero eyebrow renders "3 agents online now" from live CROO data.
+- Gate green: typecheck + 256 tests; `pnpm --filter @hunch/oracle-web build`
+  green.
 
-**`/network` page** (`app/network/page.tsx`, force-dynamic) — the A2A
-composability proof. Folds `fetchCompletedOrders` (inbound) +
-`fetchHiredOrders` (outbound) into a counterparty ledger; renders a
-hub-and-spoke SVG graph (`np-*` classes) with in/out edges, self-wallet nodes
-dashed amber (anti-sybil labelling), plus a table with Basescan links and a
-"build on the desk" CTA row. Honest empty states — nothing seeded.
+Nothing is broken. Zero orders have been placed against the new listings yet
+(`/network` + the order feed render honest empty states) — that is an
+operational gap, not a code one.
 
-**Agent-readable front doors** (both zero-auth, CORS `*`):
+## Recent changes — files touched and why
 
-- `/llms.txt` (`app/llms.txt/route.ts`) — plain-text pitch + all 9 services
-  with example payloads, for LLM agents crawling the domain.
-- `/api/catalog` (`app/api/catalog/route.ts`) — JSON catalog mirroring
-  `lib/pricing.ts` (services, prices, SLAs, example requirements, links,
-  honesty guarantees).
+- `apps/web/src/app/page.tsx` — rewritten as an **async server component**
+  (`revalidate = 120`). New: live agent band (real `onlineStatus`/orders/USDC
+  per agent), 4 buyer-persona use cases (`lp-uc-grid`), animated architecture
+  diagram (`ArchDiagram`), 8-item spec grid, track-record section with
+  `CalibrationArt` SVG, A2A section with `NetworkArt` constellation, per-service
+  example payloads, "Nine priced skills" (was wrongly "Eight").
+- `apps/web/src/app/network/page.tsx` — **new**. The A2A composability proof:
+  folds `fetchCompletedOrders` (inbound) + `fetchHiredOrders` (outbound) into a
+  counterparty ledger, renders a hub-and-spoke SVG graph (`np-*`) with in/out
+  edges, self-wallet nodes dashed amber (anti-sybil), plus a Basescan-linked
+  table and "build on the desk" CTAs.
+- `apps/web/src/app/llms.txt/route.ts`, `apps/web/src/app/api/catalog/route.ts`
+  — **new**. Zero-auth, CORS `*` machine-readable front doors so agents can
+  integrate without scraping HTML.
+- `apps/web/src/lib/croo.ts` — added `agentIds()`; **fixed the seller agent
+  ids** (see decisions).
+- `apps/web/src/app/globals.css` — +530 lines of namespaced `lp-*`/`np-*`.
+- `apps/web/src/app/layout.tsx` — nav gained "Network".
+- `docs/VISION.md` — **new**, linked from README's "What's next".
 
-**Shared:** `agentIds()` added to `lib/croo.ts` (dashboard now uses it too);
-nav gained "Network"; `docs/VISION.md` (roadmap/revenue/validation) linked
-from README's new "What's next" section.
+## Key decisions — choices and trade-offs, why X over Y
+
+- **The real seller agent ids are hardcoded as defaults** in `lib/croo.ts`
+  (`SELLER_AGENT_IDS`), not left to env. The prod bug that shipped in `74b2fb5`
+  was that the default `CROO_AGENT_IDS` was still the **S0 echo-test agent**
+  (`013febe1…`, named just "Hunch"), and Vercel had no `CROO_AGENT_IDS` set —
+  so prod fetched one wrong agent and every card fell back to "worker / —".
+  These ids are **public** on the CROO Agent Store, so defaulting to them is
+  safe and means the surfaces render live with **zero env config**:
+  - Hunch Oracle `10582fea-07e1-423c-bc3b-dfa02de2691f`
+  - Hunch TruthCheck `990fa2a5-9be6-4632-864c-c8d23a09048f`
+  - Hunch Market Desk `d019b1ba-c933-4137-8cbc-30d37126ee50`
+  `ownAgentIds()` = those three + the legacy "Hunch" agent + the buyer agent
+  (`b373b1bc…`), so self-trades stay labelled.
+- **Listings match agents by exact name**, not substring — the S0 agent is
+  named "Hunch", which substring-matched nothing and silently degraded.
+- **Landing is ISR (120s), `/network` + `/dashboard` are force-dynamic.** The
+  landing must survive a CROO API outage (it degrades to static copy); the
+  data pages should always be fresh.
+- **The web app stays dependency-free of the worker** — pricing is mirrored in
+  `lib/pricing.ts`, never imported from `packages/oracle`, so it deploys alone.
+  Cost: the price table must be kept in sync with `core/pricing.ts` by hand.
+
+## Next steps — specific, actionable
+
+1. **Seed 10+ real CAP orders** — the single biggest scoring lever (explicit
+   Technical Execution bonus, and it lights up `/network`, `/dashboard` and the
+   landing band with real numbers). Run `spike:requester` against each of the 9
+   services twice (~$16 total, mostly recycled into our own agents).
+2. **Flip `SIGNAL_BUYER_ENABLED=true`** on the Railway `buyer` service — a
+   money decision, Raj's call. Outbound hires to *external* agents are the
+   strongest A2A signal and render automatically on `/network`.
+3. **Rotate the three seller SDK keys** — they were pasted into a chat
+   transcript on 2026-07-14 (see the roadmap memory). Rotate in the CROO
+   dashboard, then update Railway + `.env`.
+4. **Record the demo video** (≤5 min): live dashboard with real orders → a 20-line
+   `hire()` → spawn a market and show it live on playhunch.xyz → `/network`
+   graph → scorecard.
+5. **File the DoraHacks BUIDL** — verify the deadline first (memory says
+   submissions closed 2026-07-09; assume extended, but confirm).
 
 ## Gotchas
 
-- The web app stays **dependency-free of the worker** — pricing/catalog data
-  is mirrored in `lib/pricing.ts`, not imported from `packages/oracle`.
-- All landing styling is namespaced `lp-*` (network page `np-*`) in
-  `globals.css`; new animated classes are registered in the
-  `prefers-reduced-motion` block.
+- Verify prod against **oracle.playhunch.xyz**; the `*.vercel.app` URL is
+  behind deployment protection and returns 302.
+- All landing styling is namespaced `lp-*` (network page `np-*`); every new
+  animated class must also be registered in the `prefers-reduced-motion` block.
 - `usdcToNumber` divides by 1e6 (6dp base units) — reuse it, don't re-derive.
-- Local dev without network access: landing falls back cleanly ("worker"
-  pill, em-dash stats); `/network` shows 0/3 + empty-state cards. Expected.
-
-## Verify
-
-`pnpm gate` (256 tests) and `pnpm --filter @hunch/oracle-web build` — both
-green as of 2026-07-14. Routes: `/` static-ISR, `/network` dynamic,
-`/llms.txt` + `/api/catalog` revalidate hourly.
+- Local dev without CROO reachable: the landing degrades cleanly ("worker"
+  pill, em-dash stats), `/network` shows 0/3. That is the fallback path, not a
+  bug — but it is also exactly what the prod agent-id bug looked like, so if
+  prod shows "worker" pills, check `agentIds()` before anything else.
