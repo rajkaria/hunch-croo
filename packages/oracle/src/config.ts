@@ -114,10 +114,40 @@ export function healthPortFromEnv(env: OracleEnv): number | undefined {
   return env.ORACLE_HEALTH_PORT ?? env.PORT;
 }
 
+/**
+ * The CROO "New Service" dialog shows a DRAFT id (`svc-new-<epoch-ms>`) while
+ * the form is unsaved, and only mints the real service id — a UUID — once you
+ * save. Copying the draft id into the service map is silent and fatal: the
+ * registry never resolves the real inbound serviceId, so the provider loop
+ * REJECTS every negotiation for that service (see provider-loop.ts invariants)
+ * and the desk looks like it simply has no demand. That is exactly how eight of
+ * our nine listings sat dead. Fail at boot instead.
+ */
+const DRAFT_SERVICE_ID = /^svc-new-\d+$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function parseServiceMap(raw: string): Record<string, string> {
   const parsed: unknown = JSON.parse(raw);
   const out = z.record(z.string()).parse(parsed);
+
+  const drafts = Object.keys(out).filter((id) => DRAFT_SERVICE_ID.test(id));
+  if (drafts.length > 0) {
+    throw new Error(
+      `service map contains unsaved CROO draft ids: ${drafts.join(", ")}. ` +
+        `These never match a real order, so every negotiation for them is rejected. ` +
+        `Copy the real service UUID from the CROO dashboard (Agent → Services) instead.`,
+    );
+  }
   return out;
+}
+
+/**
+ * Service ids that are neither a UUID nor a recognised test fixture — worth a
+ * loud boot warning, but not a hard failure: only CROO decides the id format,
+ * and we would rather run than refuse a valid listing we failed to anticipate.
+ */
+export function suspectServiceIds(map: Record<string, string>): string[] {
+  return Object.keys(map).filter((id) => !UUID.test(id));
 }
 
 /** Parse + validate the human-curated signal-buyer allowlist. */

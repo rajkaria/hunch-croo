@@ -19,7 +19,7 @@ import { buildMetrics } from "../core/metrics/snapshot.js";
 import { formatPrometheus } from "../core/metrics/registry.js";
 import { SERVICE_PRICING } from "../core/pricing.js";
 import type { LedgerStore } from "../ports/ledger.js";
-import { healthPortFromEnv, parseServiceMap, readEnv } from "../config.js";
+import { healthPortFromEnv, parseServiceMap, readEnv, suspectServiceIds } from "../config.js";
 import { consoleLogger, systemClock, systemSleeper } from "../ports/runtime.js";
 import { startHealthServer, type MetricsProvider } from "./health-server.js";
 
@@ -58,10 +58,20 @@ async function main() {
     ...(ledger ? { scorecard: createScorecardService(ledger) } : {}),
   };
 
+  const serviceMap = parseServiceMap(env.ORACLE_SERVICE_MAP);
+
+  // A serviceId that never matches a real order is indistinguishable from zero
+  // demand: the loop just rejects the negotiation. Say so at boot.
+  const suspect = suspectServiceIds(serviceMap);
+  if (suspect.length > 0) {
+    logger.warn(
+      "service ids are not CROO UUIDs — orders for them will be REJECTED unless CROO really issued these ids",
+      { serviceIds: suspect },
+    );
+  }
+
   const services: Record<string, ServiceHandler> = {};
-  for (const [serviceId, handlerName] of Object.entries(
-    parseServiceMap(env.ORACLE_SERVICE_MAP),
-  )) {
+  for (const [serviceId, handlerName] of Object.entries(serviceMap)) {
     const handler = HANDLERS[handlerName];
     if (!handler) throw new Error(`unknown handler "${handlerName}"`);
     services[serviceId] = handler;
