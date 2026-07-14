@@ -18,6 +18,7 @@ ports/adapters/core, mock-tested), `packages/client` (npm CAP client), `apps/web
 | [docs/context/portfolio-hedge.md](docs/context/portfolio-hedge.md) | S13 portfolio-hedge: shared `core/hedge/leg.ts` `priceLeg`, deterministic allocator, `portfolio-hedge` service + correlation flag (also covers `hedge-quote.ts`) |
 | [docs/context/py-client.md](docs/context/py-client.md) | S14 Python SDK: `packages/py-client` (zero-dep stdlib CAP client), unittest suite, CI `py-client` job |
 | [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting: root `Dockerfile` + `docker-compose.yml` + `railway*.json` (3 seller workers, one per CROO agent, + cap-safe `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md` runbook. **Live on Railway — agents ONLINE** |
+| [docs/context/web-experience.md](docs/context/web-experience.md) | S16 web: premium landing overhaul (live agent band, use cases, arch/calibration/network SVGs), `/network` A2A graph page, agent-readable `/llms.txt` + `/api/catalog`, `docs/VISION.md` |
 
 ## Hosting
 
@@ -38,8 +39,10 @@ worker, and the image prunes `apps/` so recursion can't reach `next`.
 
 Sprint history (S0–S14) is in git log + `docs/*.md` (HARDENING, HEDGE-QUOTE,
 SIGNAL-BUYER, LISTINGS, SCORECARD, OBSERVABILITY, PORTFOLIO-HEDGE, PY-CLIENT).
-Roadmap **S11→S15 complete**; no S16 defined — a "continue" next session needs a
-fresh brainstorm.
+Roadmap **S11→S16 complete** (S16 = web experience + A2A surfaces +
+`docs/VISION.md`). Remaining pre-submission work is operational, not code:
+flip `SIGNAL_BUYER_ENABLED=true`, seed 10+ real CAP orders, record the demo
+video, file the DoraHacks BUIDL.
 
 Branch topology: `main` is at S15 + the Railway hosting hotfix (`68d42b7`,
 2026-07-14). Old sprint branches (`claude/stoic-carson-602b4d`,

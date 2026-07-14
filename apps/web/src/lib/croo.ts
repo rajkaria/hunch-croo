@@ -11,6 +11,14 @@
 
 const CROO_API = process.env.CROO_API_URL ?? "https://api.croo.network";
 
+/** The desk's listed agent ids (Oracle, TruthCheck, Market Desk), env-overridable. */
+export function agentIds(): string[] {
+  return (process.env.CROO_AGENT_IDS ?? "013febe1-f57a-445d-95f4-adf2931bd2f9")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 /** Our provider agents (Hunch Oracle first; TruthCheck/Market Desk once registered). */
 export function providerKeys(): string[] {
   const raw = process.env.CROO_PROVIDER_KEYS ?? process.env.CROO_SDK_KEY ?? "";

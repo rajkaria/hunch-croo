@@ -116,7 +116,16 @@ counterparty's *real* quoted price so no one can quote us into overspend — plu
 an advisory-never-authority rule (a purchased signal can inform but never
 override the desk's risk policy). Every hire also seeds another agent's
 counterparty count. See [docs/SIGNAL-BUYER.md](docs/SIGNAL-BUYER.md); demo it
-credential-free with `pnpm --filter @hunch/oracle smoke:signal-buyer`.
+credential-free with `pnpm --filter @hunch/oracle smoke:signal-buyer`. Every
+relationship — both directions — renders live at `/network` on the site.
+
+## What's next
+
+The desk is a product, not a hackathon prop: the roadmap, revenue model, and
+why each CROO integration deepens over time live in
+[docs/VISION.md](docs/VISION.md). Agents (and other builders) can integrate
+without reading any of this — `/llms.txt` and `/api/catalog` are the
+machine-readable front doors.
 
 ## Run it
 

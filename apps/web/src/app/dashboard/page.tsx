@@ -1,4 +1,5 @@
 import {
+  agentIds,
   basescanTx,
   fetchCompletedOrders,
   fetchHiredOrders,
@@ -12,12 +13,7 @@ import { fetchSpawnedMarkets } from "@/lib/hunch";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const AGENT_IDS = (
-  process.env.CROO_AGENT_IDS ?? "013febe1-f57a-445d-95f4-adf2931bd2f9"
-)
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+const AGENT_IDS = agentIds();
 
 function shortHash(hash: string): string {
   return hash ? `${hash.slice(0, 8)}…${hash.slice(-6)}` : "—";
