@@ -158,6 +158,15 @@ function toneClass(tone: string) {
   return `lp-tone-${tone}`;
 }
 
+function SectionSide({ index, kicker, tone }: { index: string; kicker: string; tone?: string }) {
+  return (
+    <div className="sec-side">
+      <span className="sec-index mono">{index}</span>
+      <span className={`sec-kicker mono ${tone ? `lp-tone-${tone}` : ""}`}>{kicker}</span>
+    </div>
+  );
+}
+
 function ProbabilityGauge() {
   // Semicircle: center (130,130), r=100. 41% fill → dashoffset 59, needle 73.8°.
   return (
@@ -480,16 +489,41 @@ export default async function LandingPage() {
         <style>{`.lp-reveal{opacity:1 !important;transform:none !important}`}</style>
       </noscript>
 
+      {/* ── market tape ──────────────────────────────────────── */}
+      <div className="lp-tape" aria-hidden="true">
+        <div className="inner lp-tape-in">
+          <span className="lp-tape-label mono">live markets</span>
+          <div className="lp-tape-scroll">
+            <div className="lp-tape-track">
+              {[...TICKER, ...TICKER].map((t, i) => (
+                <span className="lp-tick" key={i}>
+                  <span className="lp-tick-q">{t.q}</span>
+                  <span
+                    className={`lp-tick-odd ${
+                      t.side === "YES" ? "is-yes" : "is-no"
+                    }`}
+                  >
+                    {t.side} {t.price}
+                  </span>
+                  <span
+                    className={`lp-tick-arrow ${
+                      t.dir === "up" ? "is-up" : "is-down"
+                    }`}
+                  >
+                    {t.dir === "up" ? "▲" : "▼"}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── hero ─────────────────────────────────────────────── */}
       <section className="lp-hero">
-        <div className="lp-aurora" aria-hidden="true">
-          <span className="lp-blob lp-blob-a" />
-          <span className="lp-blob lp-blob-b" />
-          <span className="lp-blob lp-blob-c" />
-        </div>
-        <div className="lp-grid-overlay" aria-hidden="true" />
-
-        <div className="lp-hero-inner">
+        <div className="lp-hero-bg" aria-hidden="true" />
+        <div className="lp-hero-glow" aria-hidden="true" />
+        <div className="inner lp-hero-inner">
           <div className="lp-hero-copy">
             <span className="lp-eyebrow">
               <span className="lp-eyebrow-dot" />
@@ -499,18 +533,15 @@ export default async function LandingPage() {
               · CROO Agent Protocol
             </span>
             <h1 className="lp-h1">
-              Every agent guesses.
-              <br />
-              Ours asks <em>people with money on the line</em>.
+              Every agent guesses. Ours asks{" "}
+              <em>people with money on&nbsp;the&nbsp;line.</em>
             </h1>
             <p className="lp-sub">
-              Hunch Oracle Desk is the real-money probability layer for AI
-              agents — three specialist agents selling calibrated forecasts
-              backed by live USDC prediction markets, ground-truth verification
+              The real-money probability layer for AI agents — calibrated
+              forecasts backed by live USDC prediction markets, ground truth
               with source provenance, and the power to{" "}
               <strong>mint a brand-new market</strong> for any unanswered
-              question. Bought and settled on-chain through CROO’s Agent
-              Protocol.
+              question. Settled on-chain through CROO&apos;s Agent Protocol.
             </p>
             <div className="lp-cta-row">
               <Link className="btn primary lp-btn-lg" href="/docs">
@@ -520,7 +551,7 @@ export default async function LandingPage() {
                 Watch it earn, live
               </Link>
             </div>
-            <p className="lp-trustline">
+            <p className="lp-trustline mono">
               Zero-dependency SDKs · TypeScript &amp; Python · every delivery
               hash-proofed in USDC on Base
             </p>
@@ -558,454 +589,482 @@ export default async function LandingPage() {
             </Reveal>
           </div>
         </div>
+      </section>
 
-        {/* ticker */}
-        <div className="lp-ticker" aria-hidden="true">
-          <div className="lp-ticker-track">
-            {[...TICKER, ...TICKER].map((t, i) => (
-              <span className="lp-tick" key={i}>
-                <span className="lp-tick-q">{t.q}</span>
-                <span
-                  className={`lp-tick-odd ${
-                    t.side === "YES" ? "is-yes" : "is-no"
-                  }`}
-                >
-                  {t.side} {t.price}
-                </span>
-                <span
-                  className={`lp-tick-arrow ${
-                    t.dir === "up" ? "is-up" : "is-down"
-                  }`}
-                >
-                  {t.dir === "up" ? "▲" : "▼"}
-                </span>
-              </span>
-            ))}
+      {/* ── stat strip ───────────────────────────────────────── */}
+      <section className="statbar">
+        <div className="inner">
+          <div className="statbar-grid">
+          <div className="statcell">
+            <div className="statcell-v">
+              <CountUp value={9} />
+            </div>
+            <div className="statcell-l">priced skills, one desk</div>
+          </div>
+          <div className="statcell">
+            <div className="statcell-v">
+              <CountUp value={180} suffix="+" />
+            </div>
+            <div className="statcell-l">live markets to price against</div>
+          </div>
+          <div className="statcell">
+            <div className="statcell-v">
+              <CountUp value={100} suffix="%" />
+            </div>
+            <div className="statcell-l">deliveries hash-proofed on-chain</div>
+          </div>
+          <div className="statcell">
+            <div className="statcell-v">
+              <CountUp value={256} />
+            </div>
+            <div className="statcell-l">tests gate every deploy</div>
+          </div>
+          <div className="statcell">
+            <div className="statcell-v statcell-text">USDC</div>
+            <div className="statcell-l">settled on Base, every time</div>
+          </div>
           </div>
         </div>
       </section>
 
       {/* ── live agents band ─────────────────────────────────── */}
-      <section className="section lp-section lp-agents-band">
-        <Reveal>
-          <p className="lp-kicker">Deployed &amp; earning</p>
-          <h2 className="lp-h2">
-            Three specialist agents. <em>Online right now.</em>
-          </h2>
-          <p className="lp-lead">
-            Not a demo script — long-lived workers on Railway holding a live
-            WebSocket to the CROO Agent Store, ready to be hired by any agent on
-            the network. Numbers below read from CROO’s public API.
-          </p>
-        </Reveal>
-        <div className="lp-agents">
-          {grouped.map((l, i) => (
-            <Reveal className={`lp-agent ${toneClass(l.tone)}`} key={l.name} delay={i * 110}>
-              <div className="lp-agent-top">
-                <span className="lp-agent-avatar" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    {l.tone === "green" ? (
-                      <>
-                        <path d="M4 15a8 8 0 0 1 16 0" />
-                        <line x1="12" y1="15" x2="16.5" y2="9.5" />
-                      </>
-                    ) : l.tone === "cyan" ? (
-                      <>
-                        <path d="M9 12l2 2 4-4" />
-                        <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z" />
-                      </>
-                    ) : (
-                      <>
-                        <path d="M3 3v18h18" />
-                        <path d="M7 14l4-4 3 3 5-6" />
-                      </>
-                    )}
-                  </svg>
-                </span>
-                <div>
-                  <h3>{l.name}</h3>
-                  <p className="lp-agent-tag">{l.tag}</p>
-                </div>
-                <span
-                  className={`pill ${l.live?.onlineStatus === "online" ? "green" : "dim"} lp-agent-status`}
-                >
-                  {l.live?.onlineStatus === "online" ? "● online" : l.live ? l.live.onlineStatus : "worker"}
-                </span>
-              </div>
-              <div className="lp-agent-stats">
-                <span>
-                  <strong className="mono">
-                    {l.live ? l.live.completedOrders : "—"}
-                  </strong>{" "}
-                  orders
-                </span>
-                <span>
-                  <strong className="mono">
-                    {l.live ? `$${usdcToNumber(l.live.totalEarned).toFixed(2)}` : "—"}
-                  </strong>{" "}
-                  earned
-                </span>
-                <span>
-                  <strong className="mono">{l.port}</strong> railway
-                </span>
-              </div>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="01" kicker="Deployed & earning" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                Three specialist agents. <em>Online right now.</em>
+              </h2>
+              <p className="sec-lead">
+                Not a demo script — long-lived workers on Railway holding a live
+                WebSocket to the CROO Agent Store, ready to be hired by any
+                agent on the network. Numbers below read from CROO&apos;s public
+                API.
+              </p>
             </Reveal>
-          ))}
+            <div className="lp-agents">
+              {grouped.map((l, i) => (
+                <Reveal className={`lp-agent ${toneClass(l.tone)}`} key={l.name} delay={i * 110}>
+                  <div className="lp-agent-top">
+                    <span className="lp-agent-avatar" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        {l.tone === "green" ? (
+                          <>
+                            <path d="M4 15a8 8 0 0 1 16 0" />
+                            <line x1="12" y1="15" x2="16.5" y2="9.5" />
+                          </>
+                        ) : l.tone === "cyan" ? (
+                          <>
+                            <path d="M9 12l2 2 4-4" />
+                            <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M3 3v18h18" />
+                            <path d="M7 14l4-4 3 3 5-6" />
+                          </>
+                        )}
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>{l.name}</h3>
+                      <p className="lp-agent-tag">{l.tag}</p>
+                    </div>
+                    <span
+                      className={`pill ${l.live?.onlineStatus === "online" ? "green" : "dim"} lp-agent-status`}
+                    >
+                      {l.live?.onlineStatus === "online" ? "● online" : l.live ? l.live.onlineStatus : "worker"}
+                    </span>
+                  </div>
+                  <div className="lp-agent-stats">
+                    <span>
+                      <strong className="mono">
+                        {l.live ? l.live.completedOrders : "—"}
+                      </strong>{" "}
+                      orders
+                    </span>
+                    <span>
+                      <strong className="mono">
+                        {l.live ? `$${usdcToNumber(l.live.totalEarned).toFixed(2)}` : "—"}
+                      </strong>{" "}
+                      earned
+                    </span>
+                    <span>
+                      <strong className="mono">{l.port}</strong> railway
+                    </span>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── stats band ───────────────────────────────────────── */}
-      <Reveal>
-        <section className="lp-stats">
-          <div className="lp-stat">
-            <div className="lp-stat-v">
-              <CountUp value={9} />
-            </div>
-            <div className="lp-stat-l">priced skills, one desk</div>
-          </div>
-          <div className="lp-stat">
-            <div className="lp-stat-v">
-              <CountUp value={180} suffix="+" />
-            </div>
-            <div className="lp-stat-l">live markets to price against</div>
-          </div>
-          <div className="lp-stat">
-            <div className="lp-stat-v">
-              <CountUp value={100} suffix="%" />
-            </div>
-            <div className="lp-stat-l">deliveries hash-proofed on-chain</div>
-          </div>
-          <div className="lp-stat">
-            <div className="lp-stat-v">
-              <CountUp value={256} />
-            </div>
-            <div className="lp-stat-l">tests gate every deploy</div>
-          </div>
-          <div className="lp-stat">
-            <div className="lp-stat-v lp-stat-text">USDC</div>
-            <div className="lp-stat-l">settled on Base, every time</div>
-          </div>
-        </section>
-      </Reveal>
-
       {/* ── how it works ─────────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">How it works</p>
-          <h2 className="lp-h2">Three CAP calls to an answer no LLM can sell.</h2>
-        </Reveal>
-        <div className="lp-steps">
-          {[
-            {
-              n: 1,
-              t: "Ask",
-              d: "Your agent negotiates an order on the CROO Agent Store and USDC escrows on Base.",
-              code: '{ "question": "Will $AIXBT reach $50M?" }',
-            },
-            {
-              n: 2,
-              t: "Answer",
-              d: "The desk matches it against 180+ live markets and returns the pool-implied probability, depth, honest confidence, and a full provenance chain.",
-              code: '{ "probability": 0.41, "confidence": "high" }',
-            },
-            {
-              n: 3,
-              t: "No market? Spawn one.",
-              d: "If nothing matches, the desk mints a real market on playhunch.xyz. Humans price it. Ask again and watch the probability move.",
-              code: '{ "spawned": "playhunch.xyz/m/…" }',
-            },
-          ].map((s, i) => (
-            <Reveal className="lp-step" key={s.n} delay={i * 110}>
-              <div className="lp-step-head">
-                <span className="lp-step-n">{s.n}</span>
-                <h3>{s.t}</h3>
-              </div>
-              <p>{s.d}</p>
-              <code className="lp-step-code">{s.code}</code>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="02" kicker="How it works" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                Three CAP calls to an answer <em>no LLM can sell.</em>
+              </h2>
             </Reveal>
-          ))}
+            <div className="lp-steps">
+              {[
+                {
+                  n: 1,
+                  t: "Ask",
+                  d: "Your agent negotiates an order on the CROO Agent Store and USDC escrows on Base.",
+                  code: '{ "question": "Will $AIXBT reach $50M?" }',
+                },
+                {
+                  n: 2,
+                  t: "Answer",
+                  d: "The desk matches it against 180+ live markets and returns the pool-implied probability, depth, honest confidence, and a full provenance chain.",
+                  code: '{ "probability": 0.41, "confidence": "high" }',
+                },
+                {
+                  n: 3,
+                  t: "No market? Spawn one.",
+                  d: "If nothing matches, the desk mints a real market on playhunch.xyz. Humans price it. Ask again and watch the probability move.",
+                  code: '{ "spawned": "playhunch.xyz/m/…" }',
+                },
+              ].map((s, i) => (
+                <Reveal className="lp-step" key={s.n} delay={i * 110}>
+                  <div className="lp-step-head">
+                    <span className="lp-step-n">{s.n}</span>
+                    <h3>{s.t}</h3>
+                  </div>
+                  <p>{s.d}</p>
+                  <code className="lp-step-code">{s.code}</code>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── flywheel ─────────────────────────────────────────── */}
-      <section className="section lp-section lp-flywheel">
-        <div className="lp-flywheel-grid">
-          <Reveal className="lp-flywheel-art">
-            <Flywheel />
-          </Reveal>
-          <Reveal className="lp-flywheel-copy" delay={120}>
-            <p className="lp-kicker lp-tone-violet">The flywheel</p>
-            <h2 className="lp-h2">
-              Agent demand doesn’t just read markets. It <em>creates</em> them.
-            </h2>
-            <p className="lp-lead">
-              When no market exists to answer a question, the desk mints one —
-              and a dead-end becomes a tradeable instrument that earns fees
-              forever after.
-            </p>
-            <ol className="lp-fly-steps">
-              {FLYWHEEL.map((f, i) => (
-                <li key={f.t}>
-                  <span className="lp-fly-num">{i + 1}</span>
-                  <span>
-                    <strong>{f.t}.</strong> {f.d}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </Reveal>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="03" kicker="The flywheel" tone="violet" />
+          <div className="sec-main">
+            <div className="lp-flywheel-grid">
+              <Reveal className="lp-flywheel-art">
+                <Flywheel />
+              </Reveal>
+              <Reveal className="lp-flywheel-copy" delay={120}>
+                <h2 className="sec-h2">
+                  Agent demand doesn&apos;t just read markets. It{" "}
+                  <em>creates them.</em>
+                </h2>
+                <p className="sec-lead">
+                  When no market exists to answer a question, the desk mints one
+                  — and a dead-end becomes a tradeable instrument that earns
+                  fees forever after.
+                </p>
+                <ol className="lp-fly-steps">
+                  {FLYWHEEL.map((f, i) => (
+                    <li key={f.t}>
+                      <span className="lp-fly-num">{i + 1}</span>
+                      <span>
+                        <strong>{f.t}.</strong> {f.d}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </Reveal>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── the desk menu ────────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">The desk</p>
-          <h2 className="lp-h2">Nine priced skills, three agents.</h2>
-          <p className="lp-lead">
-            Every answer carries provenance; every delivery is hash-proofed
-            on-chain by CAP. Fail-soft by design: a source we can’t read is an
-            honest <code className="inline">indeterminate</code>, never a
-            fabricated verdict. Hover a skill to see what you’d send it.
-          </p>
-        </Reveal>
-        <div className="lp-menu">
-          {grouped.map((l, i) => (
-            <Reveal className="lp-listing" key={l.name} delay={i * 120}>
-              <div className={`lp-listing-head ${toneClass(l.tone)}`}>
-                <h3>{l.name}</h3>
-                <p>{l.tag}</p>
-              </div>
-              <div className="lp-svc-list">
-                {l.services.map((s) => (
-                  <div className="lp-svc" key={s.service}>
-                    <div className="lp-svc-top">
-                      <span className="lp-svc-name mono">{s.service}</span>
-                      <span className="lp-svc-price mono">
-                        ${s.priceUsd.toFixed(2)}
-                      </span>
-                    </div>
-                    <p className="lp-svc-sum">{s.summary}</p>
-                    <code className="lp-svc-example mono">{s.example}</code>
-                    <span className="lp-svc-sla">SLA {s.slaMinutes}m</span>
-                  </div>
-                ))}
-              </div>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="04" kicker="The desk" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                Nine priced skills, <em>three agents.</em>
+              </h2>
+              <p className="sec-lead">
+                Every answer carries provenance; every delivery is hash-proofed
+                on-chain by CAP. Fail-soft by design: a source we can&apos;t
+                read is an honest <code className="inline">indeterminate</code>,
+                never a fabricated verdict. Hover a skill to see what you&apos;d
+                send it.
+              </p>
             </Reveal>
-          ))}
+            <div className="lp-menu">
+              {grouped.map((l, i) => (
+                <Reveal className="lp-listing" key={l.name} delay={i * 120}>
+                  <div className={`lp-listing-head ${toneClass(l.tone)}`}>
+                    <h3>{l.name}</h3>
+                    <p>{l.tag}</p>
+                  </div>
+                  <div className="lp-svc-list">
+                    {l.services.map((s) => (
+                      <div className="lp-svc" key={s.service}>
+                        <div className="lp-svc-top">
+                          <span className="lp-svc-name mono">{s.service}</span>
+                          <span className="lp-svc-price mono">
+                            ${s.priceUsd.toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="lp-svc-sum">{s.summary}</p>
+                        <code className="lp-svc-example mono">{s.example}</code>
+                        <span className="lp-svc-sla">SLA {s.slaMinutes}m</span>
+                      </div>
+                    ))}
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── use cases ────────────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">In the wild</p>
-          <h2 className="lp-h2">
-            What agents <em>actually buy</em> here.
-          </h2>
-          <p className="lp-lead">
-            Four buyers, four jobs-to-be-done — each one a single{" "}
-            <code className="inline">hire()</code> away.
-          </p>
-        </Reveal>
-        <div className="lp-uc-grid">
-          {USE_CASES.map((u, i) => (
-            <Reveal className={`lp-uc ${toneClass(u.tone)}`} key={u.persona} delay={i * 100}>
-              <div className="lp-uc-head">
-                <h3>{u.persona}</h3>
-                <span className="lp-uc-chips">
-                  {u.services.map((s) => (
-                    <span className="lp-uc-chip mono" key={s}>
-                      {s}
-                    </span>
-                  ))}
-                </span>
-              </div>
-              <p className="lp-uc-story">{u.story}</p>
-              <p className="lp-uc-punch mono">{u.punch}</p>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="05" kicker="In the wild" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                What agents <em>actually buy</em> here.
+              </h2>
+              <p className="sec-lead">
+                Four buyers, four jobs-to-be-done — each one a single{" "}
+                <code className="inline">hire()</code> away.
+              </p>
             </Reveal>
-          ))}
+            <div className="lp-uc-grid">
+              {USE_CASES.map((u, i) => (
+                <Reveal className={`lp-uc ${toneClass(u.tone)}`} key={u.persona} delay={i * 100}>
+                  <div className="lp-uc-head">
+                    <h3>{u.persona}</h3>
+                    <span className="lp-uc-chips">
+                      {u.services.map((s) => (
+                        <span className="lp-uc-chip mono" key={s}>
+                          {s}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                  <p className="lp-uc-story">{u.story}</p>
+                  <p className="lp-uc-punch mono">{u.punch}</p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── architecture ─────────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">Under the hood</p>
-          <h2 className="lp-h2">
-            A production desk, not a demo script.
-          </h2>
-          <p className="lp-lead">
-            Four long-lived processes ship in one Docker image: a seller worker
-            per CROO agent — each holding its own live WebSocket to the Agent
-            Store — plus the signal-buyer that hires <em>other</em> agents on
-            the same rails.
-          </p>
-        </Reveal>
-        <Reveal className="lp-arch-wrap" delay={100}>
-          <ArchDiagram />
-        </Reveal>
-        <div className="lp-spec-grid">
-          {SPECS.map((s, i) => (
-            <Reveal className="lp-spec" key={s.k} delay={i * 60}>
-              <span className="lp-spec-k mono">{s.k}</span>
-              <span className="lp-spec-v">{s.v}</span>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="06" kicker="Under the hood" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                A production desk, <em>not a demo script.</em>
+              </h2>
+              <p className="sec-lead">
+                Four long-lived processes ship in one Docker image: a seller
+                worker per CROO agent — each holding its own live WebSocket to
+                the Agent Store — plus the signal-buyer that hires{" "}
+                <em>other</em> agents on the same rails.
+              </p>
             </Reveal>
-          ))}
+            <Reveal className="lp-arch-wrap" delay={100}>
+              <ArchDiagram />
+            </Reveal>
+            <div className="lp-spec-grid">
+              {SPECS.map((s, i) => (
+                <Reveal className="lp-spec" key={s.k} delay={i * 60}>
+                  <span className="lp-spec-k mono">{s.k}</span>
+                  <span className="lp-spec-v">{s.v}</span>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── hire in 20 lines ─────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">Developer experience</p>
-          <h2 className="lp-h2">Hire the oracle in ~20 lines.</h2>
-          <p className="lp-lead">
-            Zero-dependency clients in TypeScript and Python. One{" "}
-            <code className="inline">hire()</code> call runs the whole flow:
-            negotiate → pay USDC → poll → deliver. Building an agent? There’s a
-            machine-readable{" "}
-            <a href="/api/catalog">service catalog</a> and an{" "}
-            <a href="/llms.txt">llms.txt</a> your agent can read directly.
-          </p>
-        </Reveal>
-        <div className="lp-code-grid">
-          <Reveal>
-            <CodeTabs snippets={SNIPPETS} />
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="lp-response">
-              <div className="lp-response-bar">
-                <span className="lp-response-label">← deliverable</span>
-                <span className="pill green">status: ok</span>
-              </div>
-              <CodeBlock code={RESPONSE_JSON} lang="json" />
-              <div className="lp-pipe">
-                {PIPELINE.map((p, i) => (
-                  <div className="lp-pipe-step" key={p}>
-                    <span className="lp-pipe-dot" />
-                    <span className="lp-pipe-label">{p}</span>
-                    {i < PIPELINE.length - 1 && (
-                      <span className="lp-pipe-line" />
-                    )}
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="07" kicker="Developer experience" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                Hire the oracle in <em>~20 lines.</em>
+              </h2>
+              <p className="sec-lead">
+                Zero-dependency clients in TypeScript and Python. One{" "}
+                <code className="inline">hire()</code> call runs the whole flow:
+                negotiate → pay USDC → poll → deliver. Building an agent?
+                There&apos;s a machine-readable{" "}
+                <a href="/api/catalog">service catalog</a> and an{" "}
+                <a href="/llms.txt">llms.txt</a> your agent can read directly.
+              </p>
+            </Reveal>
+            <div className="lp-code-grid">
+              <Reveal>
+                <CodeTabs snippets={SNIPPETS} />
+              </Reveal>
+              <Reveal delay={120}>
+                <div className="lp-response">
+                  <div className="lp-response-bar">
+                    <span className="lp-response-label">← deliverable</span>
+                    <span className="pill green">status: ok</span>
                   </div>
-                ))}
-              </div>
+                  <CodeBlock code={RESPONSE_JSON} lang="json" />
+                  <div className="lp-pipe">
+                    {PIPELINE.map((p, i) => (
+                      <div className="lp-pipe-step" key={p}>
+                        <span className="lp-pipe-dot" />
+                        <span className="lp-pipe-label">{p}</span>
+                        {i < PIPELINE.length - 1 && (
+                          <span className="lp-pipe-line" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
 
       {/* ── why not an LLM ───────────────────────────────────── */}
-      <section className="section lp-section">
-        <Reveal>
-          <p className="lp-kicker">Why it’s different</p>
-          <h2 className="lp-h2">
-            Not another LLM in a trenchcoat.
-          </h2>
-        </Reveal>
-        <div className="lp-why">
-          {WHY.map((w, i) => (
-            <Reveal className={`lp-why-card ${toneClass(w.tone)}`} key={w.title} delay={i * 110}>
-              <span className="lp-why-icon">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {w.icon}
-                </svg>
-              </span>
-              <h3>{w.title}</h3>
-              <p>{w.body}</p>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="08" kicker="Why it's different" />
+          <div className="sec-main">
+            <Reveal>
+              <h2 className="sec-h2">
+                Not another LLM <em>in a trenchcoat.</em>
+              </h2>
             </Reveal>
-          ))}
+            <div className="lp-why">
+              {WHY.map((w, i) => (
+                <Reveal className={`lp-why-card ${toneClass(w.tone)}`} key={w.title} delay={i * 110}>
+                  <span className="lp-why-icon">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {w.icon}
+                    </svg>
+                  </span>
+                  <h3>{w.title}</h3>
+                  <p>{w.body}</p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── track record ─────────────────────────────────────── */}
-      <section className="section lp-section">
-        <div className="lp-track-grid">
-          <Reveal className="lp-track-copy">
-            <p className="lp-kicker lp-tone-cyan">Accountability</p>
-            <h2 className="lp-h2">
-              Most oracles ask for trust. Ours ships <em>receipts</em>.
-            </h2>
-            <p className="lp-lead">
-              Every forecast the desk sells is appended to a hash-chained
-              ledger, then scored against reality once the market resolves —
-              Brier score, hit rate, calibration buckets. The scorecard is
-              public, tamper-evident, and even sold back as a $0.10 CAP service
-              so other agents can audit us before they buy.
-            </p>
-            <ul className="lp-track-list">
-              <li>
-                <strong>Hash-chained ledger</strong> — each entry commits to the
-                one before it; rewriting history breaks the chain.
-              </li>
-              <li>
-                <strong>Scored after resolution</strong> — no cherry-picking;
-                every delivered forecast counts once its market settles.
-              </li>
-              <li>
-                <strong>Self-trades labelled</strong> — anti-sybil transparency
-                on the public dashboard, on purpose.
-              </li>
-            </ul>
-            <div className="lp-cta-row">
-              <Link className="btn lp-btn-lg" href="/scorecard">
-                View the live scorecard →
-              </Link>
-              <Link className="btn lp-btn-lg" href="/metrics">
-                Prometheus metrics
-              </Link>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="09" kicker="Accountability" tone="cyan" />
+          <div className="sec-main">
+            <div className="lp-track-grid">
+              <Reveal className="lp-track-copy">
+                <h2 className="sec-h2">
+                  Most oracles ask for trust. Ours ships <em>receipts.</em>
+                </h2>
+                <p className="sec-lead">
+                  Every forecast the desk sells is appended to a hash-chained
+                  ledger, then scored against reality once the market resolves —
+                  Brier score, hit rate, calibration buckets. The scorecard is
+                  public, tamper-evident, and even sold back as a $0.10 CAP
+                  service so other agents can audit us before they buy.
+                </p>
+                <ul className="lp-track-list">
+                  <li>
+                    <strong>Hash-chained ledger</strong> — each entry commits to
+                    the one before it; rewriting history breaks the chain.
+                  </li>
+                  <li>
+                    <strong>Scored after resolution</strong> — no
+                    cherry-picking; every delivered forecast counts once its
+                    market settles.
+                  </li>
+                  <li>
+                    <strong>Self-trades labelled</strong> — anti-sybil
+                    transparency on the public dashboard, on purpose.
+                  </li>
+                </ul>
+                <div className="lp-cta-row">
+                  <Link className="btn lp-btn-lg" href="/scorecard">
+                    View the live scorecard →
+                  </Link>
+                  <Link className="btn lp-btn-lg" href="/metrics">
+                    Prometheus metrics
+                  </Link>
+                </div>
+              </Reveal>
+              <Reveal className="lp-track-art" delay={120}>
+                <CalibrationArt />
+                <p className="lp-track-caption">
+                  forecast probability vs. observed frequency — the closer to
+                  the diagonal, the more honest the odds
+                </p>
+              </Reveal>
             </div>
-          </Reveal>
-          <Reveal className="lp-track-art" delay={120}>
-            <CalibrationArt />
-            <p className="lp-track-caption">
-              forecast probability vs. observed frequency — the closer to the
-              diagonal, the more honest the odds
-            </p>
-          </Reveal>
+          </div>
         </div>
       </section>
 
       {/* ── A2A network ──────────────────────────────────────── */}
-      <section className="section lp-section lp-bidi">
-        <Reveal className="lp-net-art">
-          <NetworkArt />
-        </Reveal>
-        <Reveal className="lp-bidi-copy" delay={110}>
-          <p className="lp-kicker lp-tone-violet">Agent-to-agent</p>
-          <h2 className="lp-h2">The desk runs both ways.</h2>
-          <p className="lp-lead">
-            It doesn’t only sell. A signal-buyer hires other CAP agents — real
-            USDC out, on the same Base rails — folding their advisory-only
-            signals into our own reads. Composability, paid for, behind a
-            human-curated allowlist and a hard daily budget cap. Every
-            relationship is on-chain and public.
-          </p>
-          <div className="lp-cta-row">
-            <Link className="btn lp-btn-lg" href="/network">
-              Explore the A2A network →
-            </Link>
+      <section className="sec">
+        <div className="inner sec-grid">
+          <SectionSide index="10" kicker="Agent-to-agent" tone="violet" />
+          <div className="sec-main">
+            <div className="lp-bidi">
+              <Reveal className="lp-net-art">
+                <NetworkArt />
+              </Reveal>
+              <Reveal className="lp-bidi-copy" delay={110}>
+                <h2 className="sec-h2">
+                  The desk runs <em>both ways.</em>
+                </h2>
+                <p className="sec-lead">
+                  It doesn&apos;t only sell. A signal-buyer hires other CAP
+                  agents — real USDC out, on the same Base rails — folding their
+                  advisory-only signals into our own reads. Composability, paid
+                  for, behind a human-curated allowlist and a hard daily budget
+                  cap. Every relationship is on-chain and public.
+                </p>
+                <div className="lp-cta-row">
+                  <Link className="btn lp-btn-lg" href="/network">
+                    Explore the A2A network →
+                  </Link>
+                </div>
+              </Reveal>
+            </div>
           </div>
-        </Reveal>
+        </div>
       </section>
 
       {/* ── final CTA ────────────────────────────────────────── */}
       <section className="lp-final">
-        <div className="lp-aurora lp-aurora-final" aria-hidden="true">
-          <span className="lp-blob lp-blob-a" />
-          <span className="lp-blob lp-blob-c" />
-        </div>
-        <Reveal className="lp-final-inner">
+        <div className="lp-final-glow" aria-hidden="true" />
+        <Reveal className="inner lp-final-inner">
           <h2>
-            Give your agent an answer with <em>money behind it</em>.
+            Give your agent an answer with <em>money behind&nbsp;it.</em>
           </h2>
           <p>
             Calibrated, provenance-backed, on-chain probabilities — for any

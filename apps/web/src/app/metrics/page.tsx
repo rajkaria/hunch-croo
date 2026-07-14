@@ -1,6 +1,7 @@
 import { fetchCompletedOrders, fetchPublicAgent } from "@/lib/croo";
 import { revenueByService } from "@/lib/revenue";
 import { computeScorecard, readLedger } from "@/lib/scorecard";
+import { PageHero, Section, StatBar, StatCell } from "../_components/Chrome";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -55,27 +56,30 @@ export default async function MetricsPage() {
 
   return (
     <main>
-      <section className="hero" style={{ padding: "48px 0 32px" }}>
-        <h1 style={{ fontSize: "34px" }}>
-          The desk you can <em>watch</em>
-        </h1>
-        <p className="sub" style={{ fontSize: "15.5px" }}>
-          The worker exposes a Prometheus <span className="mono">/metrics</span>{" "}
-          endpoint on its ops port — throughput, uptime, booked revenue, and the
-          live calibration score. Point Grafana at it and the desk becomes a
-          time series. Below: the metric catalog, the live scorecard gauges, and
-          settled revenue per service from the on-chain order feed.
-        </p>
-      </section>
+      <PageHero
+        kicker="Observability"
+        title={
+          <>
+            The desk you can <em>watch.</em>
+          </>
+        }
+      >
+        The worker exposes a Prometheus <span className="mono">/metrics</span>{" "}
+        endpoint on its ops port — throughput, uptime, booked revenue, and the
+        live calibration score. Point Grafana at it and the desk becomes a time
+        series. Below: the metric catalog, the live scorecard gauges, and
+        settled revenue per service from the on-chain order feed.
+      </PageHero>
 
-      <section className="section" style={{ paddingTop: 8 }}>
-        <h2>Scrape it</h2>
-        <p className="lead">
-          Metrics ride the same port as the status page
-          (<span className="mono">ORACLE_HEALTH_PORT</span>). No new config.
+      <Section index="01" kicker="Scrape it">
+        <h2 className="sec-h2 sm">
+          One endpoint, <em>zero dependencies.</em>
+        </h2>
+        <p className="sec-lead">
+          Metrics ride the same port as the status page (
+          <span className="mono">ORACLE_HEALTH_PORT</span>). No new config.
         </p>
-        <div className="card">
-          <pre className="mono" style={{ margin: 0, fontSize: 13, overflowX: "auto" }}>
+        <pre style={{ marginTop: 32 }}>
 {`# prometheus.yml
 scrape_configs:
   - job_name: hunch-oracle
@@ -84,109 +88,133 @@ scrape_configs:
 
 # or just:
 curl -s http://localhost:8080/metrics`}
-          </pre>
-        </div>
-      </section>
+        </pre>
+      </Section>
 
-      <section className="section">
-        <h2>Live scorecard gauges</h2>
-        <p className="lead">
+      <Section index="02" kicker="Scorecard gauges" tone="cyan">
+        <h2 className="sec-h2 sm">
+          Calibration, <em>as a time series.</em>
+        </h2>
+        <p className="sec-lead">
           The <span className="mono">oracle_forecast_*</span> family, computed
           from the same track-record ledger the{" "}
           <a href="/scorecard">scorecard</a> reads. Resolved forecasts only.
         </p>
-        {card.total === 0 ? (
-          <div className="card">
-            <p>
-              No forecasts recorded yet — the scorecard family appears once the
-              worker runs with <span className="mono">ORACLE_LEDGER_PATH</span>{" "}
-              set. Try <span className="mono">pnpm --filter @hunch/oracle smoke:metrics</span>.
-            </p>
-          </div>
-        ) : (
-          <div className="grid cols-4">
-            <div className="stat">
-              <div className="label">oracle_forecasts_total</div>
-              <div className="value">{card.total}</div>
-              <div className="hint">{card.pending} pending</div>
+        <div style={{ marginTop: 32 }}>
+          {card.total === 0 ? (
+            <div className="card">
+              <p>
+                No forecasts recorded yet — the scorecard family appears once
+                the worker runs with{" "}
+                <span className="mono">ORACLE_LEDGER_PATH</span> set. Try{" "}
+                <span className="mono">
+                  pnpm --filter @hunch/oracle smoke:metrics
+                </span>
+                .
+              </p>
             </div>
-            <div className="stat">
-              <div className="label">oracle_forecast_brier</div>
-              <div className="value accent">{card.meanBrier.toFixed(4)}</div>
-              <div className="hint">0 = perfect</div>
+          ) : (
+            <div className="grid cols-4">
+              <div className="card">
+                <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  oracle_forecasts_total
+                </p>
+                <h3 style={{ fontSize: 26, marginTop: 6 }}>{card.total}</h3>
+                <p style={{ fontSize: 12.5 }}>{card.pending} pending</p>
+              </div>
+              <div className="card">
+                <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  oracle_forecast_brier
+                </p>
+                <h3 style={{ fontSize: 26, marginTop: 6, color: "var(--accent)" }}>
+                  {card.meanBrier.toFixed(4)}
+                </h3>
+                <p style={{ fontSize: 12.5 }}>0 = perfect</p>
+              </div>
+              <div className="card">
+                <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  oracle_forecast_hit_rate
+                </p>
+                <h3 style={{ fontSize: 26, marginTop: 6 }}>{card.hitRate.toFixed(2)}</h3>
+                <p style={{ fontSize: 12.5 }}>{card.resolved} resolved</p>
+              </div>
+              <div className="card">
+                <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  oracle_forecast_log_loss
+                </p>
+                <h3 style={{ fontSize: 26, marginTop: 6 }}>
+                  {card.meanLogLoss.toFixed(3)}
+                </h3>
+                <p style={{ fontSize: 12.5 }}>clamped, finite</p>
+              </div>
             </div>
-            <div className="stat">
-              <div className="label">oracle_forecast_hit_rate</div>
-              <div className="value">{card.hitRate.toFixed(2)}</div>
-              <div className="hint">{card.resolved} resolved</div>
-            </div>
-            <div className="stat">
-              <div className="label">oracle_forecast_log_loss</div>
-              <div className="value">{card.meanLogLoss.toFixed(3)}</div>
-              <div className="hint">clamped, finite</div>
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </div>
+      </Section>
 
-      <section className="section">
-        <h2>Settled revenue per service</h2>
-        <p className="lead">
+      <Section index="03" kicker="Revenue">
+        <h2 className="sec-h2 sm">
+          Settled USDC, <em>per service.</em>
+        </h2>
+        <p className="sec-lead">
           Real USDC that cleared on Base, grouped from the CROO completed-order
-          feed. This is <em>settled</em> revenue — distinct from the worker&apos;s{" "}
-          <span className="mono">oracle_revenue_usd</span> gauge, which is booked
-          at list price from the delivery log.
+          feed. This is <em>settled</em> revenue — distinct from the
+          worker&apos;s <span className="mono">oracle_revenue_usd</span> gauge,
+          which is booked at list price from the delivery log.
         </p>
-        {revenue.lines.length === 0 ? (
-          <div className="card">
-            <p>
-              No settled orders visible yet — this feed reads the CROO API
-              server-side with the provider key.
-            </p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Service</th>
-                  <th>Delivered</th>
-                  <th>Settled USDC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {revenue.lines.map((l) => (
-                  <tr key={l.serviceId}>
-                    <td>{l.name}</td>
-                    <td className="mono">{l.delivered}</td>
-                    <td className="mono">${l.revenueUsd.toFixed(2)}</td>
+        <div style={{ marginTop: 32 }}>
+          {revenue.lines.length === 0 ? (
+            <div className="card">
+              <p>
+                No settled orders visible yet — this feed reads the CROO API
+                server-side with the provider key.
+              </p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Delivered</th>
+                    <th>Settled USDC</th>
                   </tr>
-                ))}
-                <tr>
-                  <td>
-                    <strong>Total</strong>
-                  </td>
-                  <td className="mono">
-                    <strong>{revenue.totalDelivered}</strong>
-                  </td>
-                  <td className="mono">
-                    <strong>${revenue.totalUsd.toFixed(2)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {revenue.lines.map((l) => (
+                    <tr key={l.serviceId}>
+                      <td>{l.name}</td>
+                      <td className="mono">{l.delivered}</td>
+                      <td className="mono">${l.revenueUsd.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td>
+                      <strong>Total</strong>
+                    </td>
+                    <td className="mono">
+                      <strong>{revenue.totalDelivered}</strong>
+                    </td>
+                    <td className="mono">
+                      <strong>${revenue.totalUsd.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Section>
 
-      <section className="section">
-        <h2>Metric catalog</h2>
-        <p className="lead">
-          Every family the <span className="mono">/metrics</span> endpoint emits.
-          The <span className="pill dim">scorecard</span> family appears only when
-          the ledger is enabled.
+      <Section index="04" kicker="Metric catalog" tone="violet">
+        <h2 className="sec-h2 sm">
+          Every family the endpoint <em>emits.</em>
+        </h2>
+        <p className="sec-lead">
+          The <span className="pill dim">scorecard</span> family appears only
+          when the ledger is enabled.
         </p>
-        <div className="table-wrap">
+        <div className="table-wrap" style={{ marginTop: 32 }}>
           <table>
             <thead>
               <tr>
@@ -213,7 +241,7 @@ curl -s http://localhost:8080/metrics`}
             </tbody>
           </table>
         </div>
-      </section>
+      </Section>
     </main>
   );
 }

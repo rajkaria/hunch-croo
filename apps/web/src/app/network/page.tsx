@@ -10,6 +10,7 @@ import {
   usdcToNumber,
   type CrooOrder,
 } from "@/lib/croo";
+import { PageHero, Section, StatBar, StatCell } from "../_components/Chrome";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -161,124 +162,140 @@ export default async function NetworkPage() {
 
   return (
     <main>
-      <section className="hero" style={{ padding: "48px 0 24px" }}>
-        <h1 style={{ fontSize: "34px" }}>
-          The A2A network — <em>every relationship, on-chain</em>
-        </h1>
-        <p className="sub" style={{ fontSize: "15.5px" }}>
-          Agent-to-agent composability you can audit: who hires the desk, who
-          the desk hires back, and the USDC that moved — read live from CROO’s
-          order API. Own-wallet traffic is labelled, not hidden.
+      <PageHero
+        kicker="A2A network"
+        title={
+          <>
+            Every relationship, <em>on-chain.</em>
+          </>
+        }
+      >
+        Agent-to-agent composability you can audit: who hires the desk, who the
+        desk hires back, and the USDC that moved — read live from CROO&apos;s
+        order API. Own-wallet traffic is labelled, not hidden.
+      </PageHero>
+
+      <StatBar>
+        <StatCell
+          label="Counterparties"
+          value={parties.length}
+          hint={`${external.length} external`}
+          accent
+        />
+        <StatCell
+          label="Inbound (they hired us)"
+          value={`$${soldUsd.toFixed(2)}`}
+          hint={`${sold.length} settled orders`}
+        />
+        <StatCell
+          label="Outbound (we hired them)"
+          value={`$${hiredUsd.toFixed(2)}`}
+          hint={`${hired.length} settled orders`}
+        />
+        <StatCell
+          label="Desk agents online"
+          value={`${online}/3`}
+          hint="live WS to the CROO store"
+        />
+      </StatBar>
+
+      <Section index="01" kicker="Relationship graph">
+        <h2 className="sec-h2 sm">
+          The desk at the center, <em>trading both ways.</em>
+        </h2>
+        <p className="sec-lead">
+          The desk&apos;s three agents sit at the center. Green edges are
+          inbound hires (our revenue); violet edges are outbound hires (the
+          signal-buyer paying other agents on the same rails).
         </p>
-      </section>
+        <div style={{ marginTop: 32 }}>
+          {parties.length === 0 ? (
+            <div className="card">
+              <p>
+                No settled A2A orders visible yet — the graph draws itself from
+                CROO order data the moment the first hire clears. The three desk
+                agents are online and listed; the signal-buyer runs dry until{" "}
+                <code className="inline">SIGNAL_BUYER_ENABLED=true</code>.
+              </p>
+            </div>
+          ) : (
+            <NetworkGraph parties={parties} />
+          )}
+        </div>
+      </Section>
 
-      <section className="grid cols-4" style={{ paddingBottom: 32 }}>
-        <div className="stat">
-          <div className="label">Counterparties</div>
-          <div className="value accent">{parties.length}</div>
-          <div className="hint">{external.length} external</div>
-        </div>
-        <div className="stat">
-          <div className="label">Inbound (they hired us)</div>
-          <div className="value">${soldUsd.toFixed(2)}</div>
-          <div className="hint">{sold.length} settled orders</div>
-        </div>
-        <div className="stat">
-          <div className="label">Outbound (we hired them)</div>
-          <div className="value">${hiredUsd.toFixed(2)}</div>
-          <div className="hint">{hired.length} settled orders</div>
-        </div>
-        <div className="stat">
-          <div className="label">Desk agents online</div>
-          <div className="value">{online}/3</div>
-          <div className="hint">live WS to the CROO store</div>
-        </div>
-      </section>
-
-      <section className="section" style={{ paddingTop: 40 }}>
-        <h2>Relationship graph</h2>
-        <p className="lead">
-          The desk’s three agents sit at the center. Green edges are inbound
-          hires (our revenue); violet edges are outbound hires (the signal-buyer
-          paying other agents on the same rails).
-        </p>
-        {parties.length === 0 ? (
-          <div className="card">
-            <p>
-              No settled A2A orders visible yet — the graph draws itself from
-              CROO order data the moment the first hire clears. The three desk
-              agents are online and listed; the signal-buyer runs dry until{" "}
-              <code className="inline">SIGNAL_BUYER_ENABLED=true</code>.
-            </p>
-          </div>
-        ) : (
-          <NetworkGraph parties={parties} />
-        )}
-      </section>
-
-      <section className="section">
-        <h2>Counterparty ledger</h2>
-        <p className="lead">
-          One row per agent we’ve traded with, either direction. Every
+      <Section index="02" kicker="Counterparty ledger" tone="cyan">
+        <h2 className="sec-h2 sm">
+          One row per agent, <em>every settlement linked.</em>
+        </h2>
+        <p className="sec-lead">
+          One row per agent we&apos;ve traded with, either direction. Every
           settlement links to Basescan.
         </p>
-        {parties.length === 0 ? (
-          <div className="card">
-            <p>Empty until the first order settles — nothing here is seeded or mocked.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>They hired us</th>
-                  <th>We hired them</th>
-                  <th>Net USDC</th>
-                  <th>Last settlement</th>
-                </tr>
-              </thead>
-              <tbody>
-                {parties.slice(0, 40).map((p) => (
-                  <tr key={p.agentId}>
-                    <td className="mono">
-                      {shortId(p.agentId)}{" "}
-                      {p.self ? (
-                        <span className="pill amber">self</span>
-                      ) : (
-                        <span className="pill green">external</span>
-                      )}
-                    </td>
-                    <td className="mono">
-                      {p.inOrders} · ${p.inUsd.toFixed(2)}
-                    </td>
-                    <td className="mono">
-                      {p.outOrders} · ${p.outUsd.toFixed(2)}
-                    </td>
-                    <td className="mono">
-                      {p.inUsd - p.outUsd >= 0 ? "+" : "−"}$
-                      {Math.abs(p.inUsd - p.outUsd).toFixed(2)}
-                    </td>
-                    <td className="mono">
-                      {p.lastTx ? (
-                        <a href={basescanTx(p.lastTx)} target="_blank" rel="noreferrer">
-                          {p.lastTx.slice(0, 10)}…
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
+        <div style={{ marginTop: 32 }}>
+          {parties.length === 0 ? (
+            <div className="card">
+              <p>
+                Empty until the first order settles — nothing here is seeded or
+                mocked.
+              </p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>They hired us</th>
+                    <th>We hired them</th>
+                    <th>Net USDC</th>
+                    <th>Last settlement</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {parties.slice(0, 40).map((p) => (
+                    <tr key={p.agentId}>
+                      <td className="mono">
+                        {shortId(p.agentId)}{" "}
+                        {p.self ? (
+                          <span className="pill amber">self</span>
+                        ) : (
+                          <span className="pill green">external</span>
+                        )}
+                      </td>
+                      <td className="mono">
+                        {p.inOrders} · ${p.inUsd.toFixed(2)}
+                      </td>
+                      <td className="mono">
+                        {p.outOrders} · ${p.outUsd.toFixed(2)}
+                      </td>
+                      <td className="mono">
+                        {p.inUsd - p.outUsd >= 0 ? "+" : "−"}$
+                        {Math.abs(p.inUsd - p.outUsd).toFixed(2)}
+                      </td>
+                      <td className="mono">
+                        {p.lastTx ? (
+                          <a href={basescanTx(p.lastTx)} target="_blank" rel="noreferrer">
+                            {p.lastTx.slice(0, 10)}…
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Section>
 
-      <section className="section">
-        <h2>Build on the desk</h2>
-        <div className="grid cols-3">
+      <Section index="03" kicker="Build on the desk" tone="violet">
+        <h2 className="sec-h2 sm">
+          Three ways <em>in.</em>
+        </h2>
+        <div className="grid cols-3" style={{ marginTop: 32 }}>
           <div className="card">
             <h3>Hire us</h3>
             <p>
@@ -298,20 +315,20 @@ export default async function NetworkPage() {
           <div className="card">
             <h3>Verify everything</h3>
             <p>
-              Order hashes on Basescan, the desk’s track record on the{" "}
+              Order hashes on Basescan, the desk&apos;s track record on the{" "}
               <a href="/scorecard">scorecard</a>, service health on{" "}
               <a href="/metrics">metrics</a>.
             </p>
           </div>
         </div>
         {platform ? (
-          <p style={{ color: "var(--text-faint)", fontSize: 13, marginTop: 16 }}>
+          <p style={{ color: "var(--text-faint)", fontSize: 13, marginTop: 20 }}>
             CROO network context: {platform.totalAgents} agents ·{" "}
             {platform.totalServices} services · {platform.totalOrders} orders
             settled platform-wide.
           </p>
         ) : null}
-      </section>
+      </Section>
     </main>
   );
 }

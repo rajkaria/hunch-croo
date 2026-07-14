@@ -1,4 +1,5 @@
 import { SERVICES } from "@/lib/pricing";
+import { PageHero, Section } from "../_components/Chrome";
 
 const NODE_SNIPPET = `import { AgentClient } from "@croo-network/sdk";
 
@@ -70,40 +71,52 @@ curl https://api.croo.network/backend/v1/orders/<orderId>/delivery \\
 export default function DocsPage() {
   return (
     <main>
-      <section className="hero" style={{ padding: "48px 0 24px", textAlign: "left" }}>
-        <h1 style={{ fontSize: "34px", margin: 0 }}>
-          Hire the oracle in <em>20 lines</em>
-        </h1>
-        <p className="sub" style={{ margin: "16px 0 0", maxWidth: 720 }}>
-          The desk is a set of paid services on CROO&apos;s Agent Store. Your
-          agent negotiates an order, pays in USDC (escrowed on Base), and gets a
-          deterministic JSON deliverable whose hash is proofed on-chain. No
-          Hunch account needed — just a CROO key.
-        </p>
-      </section>
+      <PageHero
+        kicker="Documentation"
+        title={
+          <>
+            Hire the oracle in <em>20 lines.</em>
+          </>
+        }
+      >
+        The desk is a set of paid services on CROO&apos;s Agent Store. Your
+        agent negotiates an order, pays in USDC (escrowed on Base), and gets a
+        deterministic JSON deliverable whose hash is proofed on-chain. No Hunch
+        account needed — just a CROO key. Agents can also read the
+        machine-readable <a href="/api/catalog">/api/catalog</a> and{" "}
+        <a href="/llms.txt">/llms.txt</a> directly.
+      </PageHero>
 
-      <section className="section">
-        <h2>Node.js</h2>
-        <pre>{NODE_SNIPPET}</pre>
-      </section>
+      <Section index="01" kicker="Node.js">
+        <h2 className="sec-h2 sm">
+          Negotiate, pay, <em>read the delivery.</em>
+        </h2>
+        <pre style={{ marginTop: 28 }}>{NODE_SNIPPET}</pre>
+      </Section>
 
-      <section className="section">
-        <h2>Python</h2>
-        <pre>{PYTHON_SNIPPET}</pre>
-      </section>
+      <Section index="02" kicker="Python">
+        <h2 className="sec-h2 sm">
+          Same flow, <em>pure stdlib.</em>
+        </h2>
+        <pre style={{ marginTop: 28 }}>{PYTHON_SNIPPET}</pre>
+      </Section>
 
-      <section className="section">
-        <h2>curl</h2>
-        <pre>{CURL_SNIPPET}</pre>
-      </section>
+      <Section index="03" kicker="curl">
+        <h2 className="sec-h2 sm">
+          Or raw CAP, <em>three requests.</em>
+        </h2>
+        <pre style={{ marginTop: 28 }}>{CURL_SNIPPET}</pre>
+      </Section>
 
-      <section className="section">
-        <h2>Services &amp; input schemas</h2>
-        <p className="lead">
+      <Section index="04" kicker="Services & schemas" tone="cyan">
+        <h2 className="sec-h2 sm">
+          Nine services, <em>priced and typed.</em>
+        </h2>
+        <p className="sec-lead">
           Requirements are JSON strings. Invalid input rejects the order and CAP
           refunds your escrow automatically — you only pay for answers.
         </p>
-        <div className="table-wrap">
+        <div className="table-wrap" style={{ marginTop: 32 }}>
           <table>
             <thead>
               <tr>
@@ -127,11 +140,13 @@ export default function DocsPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </Section>
 
-      <section className="section">
-        <h2>Deliverable guarantees</h2>
-        <div className="grid cols-3">
+      <Section index="05" kicker="Guarantees" tone="violet">
+        <h2 className="sec-h2 sm">
+          What every deliverable <em>promises.</em>
+        </h2>
+        <div className="grid cols-3" style={{ marginTop: 32 }}>
           <div className="card">
             <h3>Deterministic bytes</h3>
             <p>
@@ -157,7 +172,7 @@ export default function DocsPage() {
             </p>
           </div>
         </div>
-      </section>
+      </Section>
     </main>
   );
 }
