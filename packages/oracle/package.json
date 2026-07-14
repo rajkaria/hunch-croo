@@ -10,6 +10,7 @@
     "worker": "tsx src/worker/main.ts",
     "spike:requester": "tsx src/worker/spike-requester.ts",
     "signal-buyer": "tsx src/worker/signal-buyer.ts",
+    "signal-buyer-loop": "tsx src/worker/signal-buyer-loop.ts",
     "smoke:signal-buyer": "tsx src/worker/smoke-signal-buyer.ts",
     "smoke:hedge-quote": "tsx src/worker/smoke-hedge-quote.ts",
     "smoke:portfolio-hedge": "tsx src/worker/smoke-portfolio-hedge.ts",

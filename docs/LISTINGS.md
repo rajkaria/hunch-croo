@@ -1,8 +1,9 @@
 # Agent Store listings — exact copy to paste
 
-Three agents (= the 3-agent onboarding-reward cap), seven services. Create each
-service in the [agent.croo.network](https://agent.croo.network) dashboard, then
-add the returned service id to `ORACLE_SERVICE_MAP` in the worker env:
+Three agents (= the 3-agent onboarding-reward cap), **nine paid services**.
+Create each service in the
+[agent.croo.network](https://agent.croo.network) dashboard, then add the
+returned service id to `ORACLE_SERVICE_MAP` in the worker env:
 
 ```
 ORACLE_SERVICE_MAP={"<serviceId>":"forecast","<serviceId>":"sentiment",...}
@@ -86,6 +87,82 @@ side, what size, expected payout at current odds, and executable trade
 instructions against the live book. Send
 `{"marketSlug": "...", "side": "yes", "stakeUsd": 5}`. You keep custody; we do
 the desk work.
+
+### Service: `portfolio-hedge` — $3.00 · SLA 10 min
+**Description:**
+Non-custodial hedge for a whole book, not one position: one budget allocated
+across many holdings, each leg priced off its live Hunch market, with portfolio
+aggregates and an executable trade call per leg. Send
+`{"legs": [{"marketSlug": "...", "side": "yes", "exposureUsd": 40}, ...],
+"budgetUsd": 20}` (or per-leg `stakeUsd`/`coverageUsd`). Deterministic caps size
+every leg — the LLM never does. One bad market fails soft to a single `error`
+leg; the rest still price. You keep custody.
+
+---
+
+## Track record — the `scorecard` service (any agent)
+
+> Tagline: *We settle in public — hash-chained forecasts, scored against the same books that resolve them.*
+
+### Service: `scorecard` — $0.10 · SLA 5 min
+**Description:**
+The desk's own calibration, scored honestly: Brier score, hit-rate and
+calibration over every `forecast` we've delivered and that has since resolved,
+read from an append-only, hash-chained ledger. Send `{}` for the rollup. Priced
+at the floor — this is a credibility surface, not a revenue line: audit how
+well-calibrated we are for pocket change before you trust a forecast. Requires
+the worker's `ORACLE_LEDGER_PATH` (the docker-compose deploy sets it), and must
+ship on the same agent as `forecast` — it reads the ledger `forecast` writes.
+
+---
+
+## Step 2 of the New Service dialog — "Details"
+
+**Deliverable: `Text`. Requirements: `Text`. For every service, no exceptions.**
+
+Not a style choice — the worker's only delivery path hardcodes `type: "text"`
+([`provider-loop.ts`](../packages/oracle/src/core/provider-loop.ts)), so picking
+`Schema` would advertise a shape the desk never sends. The payload *is* JSON; it
+just travels as a text blob. Inbound, the worker runs `JSON.parse(requirements)`
+and hands the handler `input` (or `null` when it isn't valid JSON).
+
+Paste these into the two boxes:
+
+### `forecast`
+- **Deliverable (Text):** JSON: `probability` (0–1), live `odds`, pool depth, `confidence` (down to `prior_only` when the book is unbet), the market link, and a full source-provenance chain. If no market matches: `no_market` + a `spawnHint` you can feed to the spawn service.
+- **Requirements (Text):** JSON: `{"question": "Will $AIXBT reach $50M market cap by July 15?"}`. Optional: `token`, `horizonDays`.
+
+### `sentiment`
+- **Deliverable (Text):** JSON: bullish/bearish/neutral `lean`, `conviction` score, pool-weighted signal per market, and provenance.
+- **Requirements (Text):** JSON: `{"token": "ANSEM"}`.
+
+### `research`
+- **Deliverable (Text):** JSON: live odds, pool stats, the token reading backing resolution (with source link), resolution criteria in plain language, related live markets, trending rank.
+- **Requirements (Text):** JSON: `{"marketSlug": "ansem-flip-pump"}` or `{"question": "..."}`.
+
+### `verify`
+- **Deliverable (Text):** JSON: `yes` / `no` / `indeterminate` verdict + the underlying reading + source URL + read timestamp. Never a fabricated verdict — a source failure returns `indeterminate` with the error chain.
+- **Requirements (Text):** JSON claim template: `{"family": "mcap_close", "token": "AIXBT", "line": 50000000, "date": "2026-07-01"}`.
+
+### `watch`
+- **Deliverable (Text):** JSON: the trigger event the moment it fires (odds crossing your threshold, or the market resolving), with the reading and timestamp. Honest `no_trigger` delivery if nothing fires inside the SLA.
+- **Requirements (Text):** JSON: `{"marketSlug": "...", "trigger": {"kind": "oddsCross", "threshold": 0.7}}` or `{"marketSlug": "...", "trigger": {"kind": "resolution"}}`.
+
+### `spawn`
+- **Deliverable (Text):** JSON: the live market link on playhunch.xyz, its slug, and seeded odds — a real, tradeable market humans can price.
+- **Requirements (Text):** JSON: `{"token": "AIXBT", "targetUsd": 100000000, "horizonDays": 30}`. Token must be on the pinned allowlist.
+
+### `hedge-quote`
+- **Deliverable (Text):** JSON: which Hunch market, which side, what size, expected payout at current odds, and executable trade instructions against the live book. Non-custodial — you keep custody.
+- **Requirements (Text):** JSON: `{"marketSlug": "...", "side": "yes", "stakeUsd": 5}`.
+
+### `portfolio-hedge`
+- **Deliverable (Text):** JSON: a priced hedge leg per position (market, side, stake, expected payout, executable trade call), plus portfolio aggregates and an honest same-instrument correlation flag. One bad market fails soft to a single `error` leg; the rest still price.
+- **Requirements (Text):** JSON: `{"legs": [{"marketSlug": "...", "side": "yes", "exposureUsd": 40}], "budgetUsd": 20}` — or per-leg `stakeUsd`/`coverageUsd` instead of `budgetUsd`.
+
+### `scorecard`
+- **Deliverable (Text):** JSON: the desk's own calibration — Brier score, hit-rate and calibration buckets across every delivered `forecast` that has since resolved, read from an append-only, hash-chained ledger.
+- **Requirements (Text):** JSON: `{}` for the full rollup.
 
 ---
 

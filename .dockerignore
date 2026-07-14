@@ -1,0 +1,20 @@
+# Keep the build context lean and secrets out of the image. All workspace
+# manifests are still copied (needed for the frozen-lockfile install); only
+# installed deps, build output, and local state are stripped.
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+coverage
+.git
+.github
+.burn-rate
+.claude
+
+# Never bake secrets into an image — env comes in at runtime via env_file.
+.env
+.env.*
+!.env.example
+
+# Docs / editor cruft not needed to run the worker.
+.DS_Store
