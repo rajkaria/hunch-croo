@@ -17,7 +17,7 @@ ports/adapters/core, mock-tested), `packages/client` (npm CAP client), `apps/web
 | [docs/context/observability.md](docs/context/observability.md) | S12 observability: dependency-free Prometheus `/metrics` (`core/metrics/**`), booked-revenue accounting, per-service delivery counter, `/metrics` web page |
 | [docs/context/portfolio-hedge.md](docs/context/portfolio-hedge.md) | S13 portfolio-hedge: shared `core/hedge/leg.ts` `priceLeg`, deterministic allocator, `portfolio-hedge` service + correlation flag (also covers `hedge-quote.ts`) |
 | [docs/context/py-client.md](docs/context/py-client.md) | S14 Python SDK: `packages/py-client` (zero-dep stdlib CAP client), unittest suite, CI `py-client` job |
-| [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting: root `Dockerfile` + `docker-compose.yml` + `railway*.json` (3 seller workers, one per CROO agent, + cap-safe `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md` runbook. **Live on Railway — agents ONLINE** |
+| [docs/context/hosting-deploy.md](docs/context/hosting-deploy.md) | S15 hosting + real traction: `Dockerfile`/`docker-compose.yml`/`railway*.json` (3 seller workers + `signal-buyer-loop`), 9-service catalogue, `docs/DEPLOY.md`. Also the CAP-client fixes (`packages/client`, npm 0.1.1), real service UUIDs, and how to harvest external `service_id`s. **Buyer LIVE, first real orders placed** |
 | [docs/context/web-experience.md](docs/context/web-experience.md) | S16–S17 web: full-bleed editorial design system (S17 redesign, all six pages, shared `Chrome.tsx`), live-data landing, `/network` A2A graph page, agent-readable `/llms.txt` + `/api/catalog`, `docs/VISION.md` |
 
 ## Hosting
