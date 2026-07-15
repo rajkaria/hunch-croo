@@ -17,8 +17,12 @@ import type {
 export interface MockCounterparty {
   serviceId: string;
   agentId?: string;
-  /** Decimal USDC string the counterparty quotes at order_created. */
+  /** Decimal USDC string the counterparty quotes at order_created. Pass "" to
+   * model the LIVE shape, where the value rides in `amount` instead. */
   price: string;
+  /** Order value in base units (decimal string), e.g. "100000.00000000" = $0.10.
+   * Mirrors the live API, which leaves `price` empty and carries value here. */
+  amount?: string;
   paymentToken?: string;
   deliverable?: { text?: string; schema?: string };
   behavior?:
@@ -29,6 +33,13 @@ export interface MockCounterparty {
     | "no_response";
 }
 
+export interface MockRequesterOptions {
+  /** Events the server "replays" the instant a requester connects — models the
+   * live CAP WS dumping historical events on (re)connect. A correct driver must
+   * ignore these (they belong to orders it never negotiated). */
+  replayOnConnect?: CapEvent[];
+}
+
 export class MockCapRequesterTransport implements CapRequesterTransport {
   private readonly counterparties = new Map<string, MockCounterparty>();
   private readonly orders = new Map<string, CapOrder>();
@@ -36,13 +47,17 @@ export class MockCapRequesterTransport implements CapRequesterTransport {
   readonly rejectedOrders = new Map<string, string>();
   private listener: ((event: CapEvent) => void) | null = null;
   private seq = 0;
+  private readonly replayOnConnect: CapEvent[];
 
-  constructor(counterparties: MockCounterparty[]) {
+  constructor(counterparties: MockCounterparty[], opts: MockRequesterOptions = {}) {
     for (const cp of counterparties) this.counterparties.set(cp.serviceId, cp);
+    this.replayOnConnect = opts.replayOnConnect ?? [];
   }
 
   async connect(onEvent: (event: CapEvent) => void): Promise<CapConnection> {
     this.listener = onEvent;
+    // Replay history first, exactly as the live server does on connect.
+    for (const event of this.replayOnConnect) this.emit(event);
     return { close: () => (this.listener = null) };
   }
 
@@ -72,10 +87,17 @@ export class MockCapRequesterTransport implements CapRequesterTransport {
       serviceId: cp.serviceId,
       requesterAgentId: "mock-signal-buyer",
       price: cp.price,
+      ...(cp.amount !== undefined ? { amount: cp.amount } : {}),
       paymentToken: cp.paymentToken ?? "USDC",
       status: "created",
     });
-    this.emit({ type: "order_created", orderId, serviceId: cp.serviceId, raw: {} });
+    this.emit({
+      type: "order_created",
+      orderId,
+      negotiationId,
+      serviceId: cp.serviceId,
+      raw: {},
+    });
     return { negotiationId };
   }
 

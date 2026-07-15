@@ -133,3 +133,32 @@ export function parsePriceUsd(price: string, token: string): number {
   const value = Number.parseFloat(price);
   return Number.isFinite(value) ? value : Number.NaN;
 }
+
+/** USDC settles in 6 decimals, so base units ÷ 1e6 = dollars. */
+const USDC_DECIMALS = 6;
+
+/**
+ * The real USD value of a created order — the number the pay-gate checks.
+ *
+ * WHY this exists: the live CAP API returns `price: ""` and carries the value
+ * in `amount` (paymentToken base units, "100000.00000000" = $0.10). The mock
+ * populated `price`, so an empty-`price` live order silently parsed to NaN and
+ * the buyer self-rejected EVERY real order (`invalid_price`). Prefer a valid,
+ * positive `price`; otherwise derive `amount ÷ 10^6`. Non-USDC settlement is
+ * unpriceable in dollars here → NaN, and the gate then declines (no money moves).
+ */
+export function orderPriceUsd(order: {
+  price: string;
+  paymentToken: string;
+  amount?: string;
+}): number {
+  const priced = parsePriceUsd(order.price, order.paymentToken);
+  if (Number.isFinite(priced) && priced > 0) return priced;
+
+  // `price` was empty/zero (the live shape) — fall back to base-units `amount`.
+  if (order.paymentToken && order.paymentToken.toUpperCase() !== "USDC") {
+    return Number.NaN;
+  }
+  const base = Number.parseFloat(order.amount ?? "");
+  return Number.isFinite(base) && base > 0 ? base / 10 ** USDC_DECIMALS : Number.NaN;
+}

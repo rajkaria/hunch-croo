@@ -4,6 +4,8 @@ import type {
   CapRequesterTransport,
 } from "../../ports/cap.js";
 import type { Clock, OracleLogger } from "../../ports/runtime.js";
+import { orderPriceUsd } from "./policy.js";
+import { PurchaseCorrelator } from "./correlate.js";
 
 /**
  * One requester-side purchase, driven as a promise over the CAP event stream:
@@ -54,6 +56,10 @@ export async function buyOnce(
     let settled = false;
     let connection: { close(): void } | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Scope this purchase to one order so replayed history on connect can't
+    // drive it (see correlate.ts). buyOnce adopts the first created order; the
+    // real guard for the buyer is terminal-event ownership below.
+    const correlator = new PurchaseCorrelator({ requireNegotiationMatch: false });
 
     const finish = (outcome: BuyOutcome) => {
       if (settled) return;
@@ -77,7 +83,12 @@ export async function buyOnce(
     const onEvent = async (event: CapEvent) => {
       try {
         if (event.type === "order_created" && event.orderId) {
+          if (correlator.adoptedOrderId !== undefined) return; // already handling one
           const order = await transport.getOrder(event.orderId);
+          // A replayed created event points at an order that has since gone
+          // terminal — never gate or pay it.
+          if (order.status !== "created") return;
+          if (!correlator.adopt(event)) return; // foreign negotiation
           const decision = req.gate(order);
           if (!decision.pay) {
             await transport.rejectOrder(order.orderId, decision.reason);
@@ -96,11 +107,13 @@ export async function buyOnce(
           const { txHash } = await transport.payOrder(order.orderId);
           logger?.info("signal-buyer paid (escrow on Base)", {
             orderId: order.orderId,
-            price: order.price,
+            // `order.price` is empty on the live API — log the real derived USD.
+            priceUsd: orderPriceUsd(order),
             txHash,
           });
         }
         if (event.type === "order_completed" && event.orderId) {
+          if (!correlator.owns(event)) return; // replayed / foreign order
           const [order, delivery] = await Promise.all([
             transport.getOrder(event.orderId),
             transport.getDelivery(event.orderId),
@@ -116,6 +129,7 @@ export async function buyOnce(
           });
         }
         if (event.type === "order_rejected" || event.type === "order_expired") {
+          if (!correlator.owns(event)) return; // replayed / foreign order
           finish({
             status: "rejected",
             ...(event.orderId !== undefined ? { orderId: event.orderId } : {}),
@@ -136,12 +150,13 @@ export async function buyOnce(
     void (async () => {
       try {
         connection = await transport.connect(onEvent);
-        await transport.negotiateOrder({
+        const { negotiationId } = await transport.negotiateOrder({
           serviceId: req.serviceId,
           ...(req.requirements !== undefined
             ? { requirements: req.requirements }
             : {}),
         });
+        correlator.setNegotiation(negotiationId);
       } catch (error) {
         finish({
           status: "failed",

@@ -53,7 +53,7 @@ function toCapNegotiation(negotiation: SdkNegotiation): CapNegotiation {
   return out;
 }
 
-function toCapOrder(order: SdkOrder): CapOrder {
+export function toCapOrder(order: SdkOrder): CapOrder {
   const out: CapOrder = {
     orderId: order.orderId,
     negotiationId: order.negotiationId,
@@ -63,6 +63,11 @@ function toCapOrder(order: SdkOrder): CapOrder {
     paymentToken: order.paymentToken,
     status: order.status,
   };
+  // The live API leaves `price` empty and carries the order value in `amount`
+  // (base units) — a field the SDK's `Order` type omits, so read it off-type.
+  // Without this the pay-gate parses "" → NaN and self-rejects every order.
+  const amount = (order as { amount?: string }).amount;
+  if (amount) out.amount = amount;
   if (order.payTxHash) out.payTxHash = order.payTxHash;
   if (order.clearTxHash) out.clearTxHash = order.clearTxHash;
   if (order.slaDeadline) out.slaDeadline = order.slaDeadline;

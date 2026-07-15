@@ -4,6 +4,7 @@ import { MockCapRequesterTransport } from "../src/adapters/mock/requester.js";
 import {
   decidePurchase,
   isAllowlisted,
+  orderPriceUsd,
   parsePriceUsd,
   utcDay,
   type AllowlistEntry,
@@ -95,6 +96,45 @@ describe("signal-buyer policy", () => {
   });
 });
 
+// ── orderPriceUsd: the LIVE order shape (empty price, value in `amount`) ─────
+// Regression guard for the invalid_price:NaN self-reject. The live CAP API
+// leaves `price` EMPTY and carries the value in `amount` (base units, 1e6);
+// the mock populated `price`, which is exactly why this shipped unnoticed.
+describe("orderPriceUsd — reads price OR base-units amount", () => {
+  it("derives USD from base-units `amount` when live `price` is empty", () => {
+    // "100000.00000000" base units ÷ 1e6 = $0.10 (the CROO scorecard floor)
+    expect(
+      orderPriceUsd({ price: "", paymentToken: "USDC", amount: "100000.00000000" }),
+    ).toBeCloseTo(0.1, 9);
+  });
+
+  it("uses `price` when present (mock / back-compat shape)", () => {
+    expect(orderPriceUsd({ price: "0.50", paymentToken: "USDC" })).toBe(0.5);
+  });
+
+  it("prefers a valid `price` over `amount` when both are present", () => {
+    expect(
+      orderPriceUsd({ price: "0.25", paymentToken: "USDC", amount: "999000000" }),
+    ).toBe(0.25);
+  });
+
+  it("is NaN when neither price nor amount is usable (gate then declines)", () => {
+    expect(Number.isNaN(orderPriceUsd({ price: "", paymentToken: "USDC" }))).toBe(true);
+    expect(
+      Number.isNaN(orderPriceUsd({ price: "", paymentToken: "USDC", amount: "" })),
+    ).toBe(true);
+    expect(
+      Number.isNaN(orderPriceUsd({ price: "0", paymentToken: "USDC", amount: "0" })),
+    ).toBe(true);
+  });
+
+  it("is NaN for non-USDC settlement even with an amount", () => {
+    expect(
+      Number.isNaN(orderPriceUsd({ price: "", paymentToken: "DAI", amount: "100000" })),
+    ).toBe(true);
+  });
+});
+
 // ── purchase session (buyOnce) ─────────────────────────────────────────────
 
 describe("buyOnce lifecycle", () => {
@@ -147,6 +187,35 @@ describe("buyOnce lifecycle", () => {
     expect(out.status).toBe("failed");
     expect(out.reason).toContain("timeout");
   });
+
+  it("ignores a replayed historical order_completed for a foreign order (WS replay guard)", async () => {
+    // The CAP WS replays history on connect. A stale order_completed for an
+    // order we never negotiated must NOT drive this purchase — before the guard
+    // buyOnce fetched the ghost order (mock throws) and false-"failed".
+    const transport = new MockCapRequesterTransport(
+      [{ serviceId: "svc-a", price: "0.50", deliverable: { schema: '{"probability":0.7}' } }],
+      { replayOnConnect: [{ type: "order_completed", orderId: "order-ghost", raw: {} }] },
+    );
+    const out = await buyOnce(
+      { transport, clock },
+      { serviceId: "svc-a", gate: () => ({ pay: true }) },
+    );
+    expect(out.status).toBe("delivered");
+    expect(out.orderId).not.toBe("order-ghost");
+    expect(out.delivery?.schema).toContain("0.7");
+  });
+
+  it("ignores a replayed historical order_rejected for a foreign order", async () => {
+    const transport = new MockCapRequesterTransport(
+      [{ serviceId: "svc-a", price: "0.50", deliverable: { text: "ok" } }],
+      { replayOnConnect: [{ type: "order_rejected", orderId: "order-ghost", raw: {} }] },
+    );
+    const out = await buyOnce(
+      { transport, clock },
+      { serviceId: "svc-a", gate: () => ({ pay: true }) },
+    );
+    expect(out.status).toBe("delivered"); // NOT a false "rejected" from the ghost
+  });
 });
 
 // ── the buyer over a round ─────────────────────────────────────────────────
@@ -190,6 +259,40 @@ describe("SignalBuyer round", () => {
       "Alpha Terminal",
       "Cheap Sentiment",
     ]);
+  });
+
+  it("BUYS a live-shape order — empty price, value in `amount` (invalid_price:NaN regression)", async () => {
+    const store = new InMemorySignalStore();
+    // The exact live CROO shape: price EMPTY, value carried in base-units amount.
+    const transport = new MockCapRequesterTransport([
+      {
+        serviceId: "svc-a",
+        agentId: "agent-a",
+        price: "",
+        amount: "100000.00000000", // ÷1e6 = $0.10
+        deliverable: { schema: JSON.stringify({ probability: 0.6 }) },
+      },
+    ]);
+    const buyer = new SignalBuyer(
+      { transport, store, clock },
+      {
+        allowlist: [
+          { serviceId: "svc-a", agentId: "agent-a", label: "Alpha Terminal", category: "research" },
+        ],
+        budget,
+        live: true,
+      },
+    );
+    const report = await buyer.runRound();
+
+    // Before the fix: parsePriceUsd("") → NaN → invalid_price → purchased 0, skipped 1.
+    expect(report.purchased).toBe(1);
+    expect(report.skipped).toBe(0);
+    expect(report.spentUsd).toBeCloseTo(0.1, 5);
+    const p = report.purchases[0];
+    expect(p?.status).toBe("delivered");
+    expect(p?.priceUsd).toBeCloseTo(0.1, 5);
+    expect(report.signals).toHaveLength(1);
   });
 
   it("stops mid-round when the daily cap is exhausted", async () => {

@@ -2,7 +2,7 @@ import type { CapRequesterTransport } from "../../ports/cap.js";
 import type { Clock, OracleLogger } from "../../ports/runtime.js";
 import {
   decidePurchase,
-  parsePriceUsd,
+  orderPriceUsd,
   utcDay,
   type AllowlistEntry,
   type BuyerBudget,
@@ -78,7 +78,7 @@ export class SignalBuyer {
       }
 
       const gate: PayGate = (order) => {
-        const priceUsd = parsePriceUsd(order.price, order.paymentToken);
+        const priceUsd = orderPriceUsd(order);
         const decision = decidePurchase({
           entry,
           priceUsd,
@@ -111,7 +111,7 @@ export class SignalBuyer {
 
       const priceUsd =
         outcome.order !== undefined
-          ? parsePriceUsd(outcome.order.price, outcome.order.paymentToken)
+          ? orderPriceUsd(outcome.order)
           : Number.NaN;
 
       if (outcome.status === "delivered" && outcome.delivery) {

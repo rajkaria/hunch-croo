@@ -29,15 +29,17 @@ Merged to `main` (`a717d1a`). Gate green: typecheck + **269 tests** (260 oracle
 **energetic-benevolence** `117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
 rajkaria98@gmail.com, deploys from `main`). All three sellers log `websocket
 connected`. **The buyer is LIVE** (`SIGNAL_BUYER_ENABLED=true`) and placing real
-orders every round — but they **self-reject on a price bug** (next-step #1), so it
-isn't spending yet. Two manual hires DID settle end-to-end (forecast + AlphaTrack).
+orders every round. The **price-NaN self-reject is FIXED** (next-step #1) — the
+buyer now derives USD from `order.amount` when the live `price` is empty, so it
+will actually spend on the next deploy. Two manual hires settled end-to-end
+(forecast + AlphaTrack). Gate green: typecheck + **277 oracle tests**.
 
 | Railway service | Config | Notes |
 |---|---|---|
 | `worker-oracle` | root `railway.json` | volume `/app/data` (ledger); real service UUIDs mapped |
 | `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — ledger is Oracle's |
 | `worker-marketdesk` | root `railway.json` | hedge caps set; real UUIDs mapped |
-| `buyer` | `railway.buyer.json` | **LIVE but self-rejecting** — see next-step #1 (price bug); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
+| `buyer` | `railway.buyer.json` | **LIVE; price bug FIXED** (deploy pending to spend); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
 
 **Orders placed (live CROO, real Base USDC):**
 - `forecast` self-hire — **completed**, $0.25 (integration test, NOT traction). Full
@@ -257,18 +259,17 @@ which also keeps rotation to a one-liner:
 
 Agents ONLINE, listings fixed, buyer LIVE, first real orders placed. What's left:
 
-1. **FIX THE BUYER PRICE BUG — every loop order self-rejects (4th mock-invisible
-   bug, diagnosed not fixed).** The loop negotiates and orders get *created*, then
-   the buyer's own cap gate rejects them: CROO returns `rejectReason: invalid_price:
-   unusable price NaN`. Root cause: the created order carries its value in
-   **`order.amount`** (USDC base units — `100000.00000000` = $0.10, ÷ 1e6), but
-   `order.price` is **empty** on the live API. `adapters/croo/transport.ts:62` and
-   `core/signal-buyer/purchase.ts:99` both read `order.price` → `NaN` →
-   `policy.ts:84` (`!Number.isFinite`) → `invalid_price`, no money moves. (The one
-   AlphaTrack order that DID complete was paid by hand via the raw API, bypassing
-   this gate.) Fix: derive priceUsd from `amount` (÷ 1e6) when `price` is empty; add
-   a live-shape test (the mock populates `price`, which is why this shipped). Until
-   then the buyer churns negotiate→reject and never spends — cap-safe but useless.
+1. ~~**FIX THE BUYER PRICE BUG**~~ **✅ FIXED (2026-07-15, deploy pending).** The
+   created order carried its value in **`order.amount`** (base units,
+   `100000.00000000` = $0.10, ÷ 1e6) with `order.price` **empty** on the live API;
+   the mock populated `price`, so the buyer self-rejected every real order with
+   `invalid_price: unusable price NaN`. Fix: new `policy.orderPriceUsd(order)`
+   prefers a valid `price`, else derives `amount ÷ 1e6`; `CapOrder` gained an
+   `amount` field, `adapters/croo/transport.ts#toCapOrder` surfaces it, and the
+   gate (`buyer.ts`) + paid-log (`purchase.ts`) read through it. Live-shape +
+   transport tests added (the mock now models the empty-price/amount shape).
+   **Next: deploy so the buyer spends, then confirm a loop order reaches
+   `completed` and daily spend stays under the $5 cap.**
 2. **Seed inbound demand from other teams** (the real traction number). Post the
    hire-swap in the hackathon channel: "drop your service_id, I'll route real
    orders to it." Each becomes a genuine external order on our sellers (currently
@@ -276,10 +277,14 @@ Agents ONLINE, listings fixed, buyer LIVE, first real orders placed. What's left
 3. **Add the two Polymarket counterparties** once a valid input is known — pass
    `requirements` with a real market slug / 0x wallet, add their service_ids
    (above) to `SIGNAL_BUYER_ALLOWLIST`, re-`--set` on the `buyer` service.
-4. **Fix the `spike:requester` replay bug** (`worker/spike-requester.ts`) — it
-   resolves on ANY `order_completed` WS event, including replayed historical ones,
-   so it false-"completes" on a stale order instead of the one it just negotiated.
-   Minor (validation-only script), but it masked the AlphaTrack hire mid-flight.
+4. ~~**Fix the `spike:requester` replay bug**~~ **✅ FIXED (2026-07-15).** The CAP
+   WS replays historical events on connect, so a driver that acts on the first
+   `order_completed` false-"completes" on a stale order. New tested
+   `core/signal-buyer/correlate.ts#PurchaseCorrelator` scopes a purchase to one
+   order; `spike-requester.ts` uses strict negotiation-match, and **`buyOnce`
+   (the buyer money path, same bug class) now owns terminal events by order id**
+   too. Residual (documented): a replayed *still-open* `created` order arriving
+   before `buyOnce` learns its negotiation id — low-harm, cap-safe.
 5. **Rotate the seller + requester SDK keys** — pasted into transcripts. Regenerate
    in CROO, update `.env` + Railway (`CROO_SDK_KEY` follows the `${{…}}` reference).
 6. **Delete junk Railway services** (`@hunch/oracle-web`, `degen-trader-example`,
