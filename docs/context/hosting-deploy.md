@@ -14,42 +14,56 @@ globs:
   - packages/oracle/src/worker/main.ts
   - packages/oracle/src/config.ts
   - packages/oracle/src/core/pricing.ts
-updated: 2026-07-14
+  - packages/client/**
+updated: 2026-07-15
 ---
 
-# Hosting — get the CROO agents ONLINE (S15)
+# Hosting — CROO agents ONLINE + first real traction (S15)
 
-Merged to `main` (`2f4ff8b`, hotfix `68d42b7`). Gate green: typecheck + **256 tests**.
+Merged to `main` (`a717d1a`). Gate green: typecheck + **269 tests** (260 oracle
++ 9 CAP-client). `@hunchxyz/cap-client@0.1.1` published to npm.
 
 ## Current state — what's working, deployed, broken
 
-**🟢 DEPLOYED AND ONLINE (2026-07-14).** All four processes run on Railway, project
-**energetic-benevolence** (`117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
-rajkaria98@gmail.com), deploying from `main`. All three sellers log
-`websocket connected` — that WS *is* the ONLINE signal — and `buyer` loops in
-dry-run (`live: false, spentUsd: 0`). The Docker image is **no longer unverified**:
-it builds on Railway's builder (`rm -rf apps examples` runs, install is filtered).
-Nothing has been hired yet (`listed orders: 0`), which is the expected idle state.
+**🟢 LIVE WITH REAL ORDERS (2026-07-15).** All four processes on Railway (project
+**energetic-benevolence** `117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
+rajkaria98@gmail.com, deploys from `main`). All three sellers log `websocket
+connected`. **The buyer is LIVE** (`SIGNAL_BUYER_ENABLED=true`) and its first
+round hired both allowlisted counterparties. Real orders now exist on-chain.
 
 | Railway service | Config | Notes |
 |---|---|---|
-| `worker-oracle` | root `railway.json` | volume at `/app/data` (the ledger); `ORACLE_LEDGER_PATH` set |
-| `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — correct, the ledger is Oracle's |
-| `worker-marketdesk` | root `railway.json` | hedge caps set |
-| `buyer` | `railway.buyer.json` (config-as-code path) | dry-run until `SIGNAL_BUYER_ENABLED=true` |
+| `worker-oracle` | root `railway.json` | volume `/app/data` (ledger); real service UUIDs mapped |
+| `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — ledger is Oracle's |
+| `worker-marketdesk` | root `railway.json` | hedge caps set; real UUIDs mapped |
+| `buyer` | `railway.buyer.json` | **LIVE** — allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
 
-**The diagnosis (historical).** The CROO agent dashboard showed two agents OFFLINE
-with ~$0 activity. Two independent causes, neither a code bug:
+**Orders placed (live CROO, real Base USDC):**
+- `forecast` self-hire — completed, $0.25 (integration test, NOT traction). Full
+  lifecycle `created→paying→paid→delivering→evaluating→completed`, real tx hashes.
+  Handler searched 198 open Hunch markets, returned `no_market` + near-misses +
+  provenance (fail-soft held — never faked a probability).
+- AlphaTrack `top_traders` external hire — delivered, $0.10. Real Binance
+  top-trader leaderboard returned, on-chain `deliverTxHash`. Proved the
+  fiber-extracted service_id is genuine.
+- Buyer loop round 1 — 2 outbound orders (AlphaTrack + Polymind) auto-placed.
 
-1. **Nothing hosted the worker.** The desk is a long-lived process whose live
-   WebSocket to CROO *is* the ONLINE signal (`worker/main.ts` → `ProviderLoop`).
-   It had only ever been run from a laptop. Close the laptop → agent goes dark.
-2. **Nothing real was listed.** `ORACLE_SERVICE_MAP` contained exactly one entry:
-   `echo`, the S0 spike endpoint. All 8 paid services existed in code and none
-   were purchasable. The lone $0.01 order on the dashboard was someone hitting
-   the echo test.
+**The two defects that made traction impossible (both fixed this session).**
+Neither showed in the 256-test mock suite; both surfaced on first contact with
+the live API. All three CAP-money-path bugs were mock-invisible:
 
-**Shipped.** Root `Dockerfile` (node:22-slim, runs TS on `tsx` — no build step,
+1. **8 of 9 listings rejected every hire.** `ORACLE_SERVICE_MAP` keyed handlers
+   by the CROO dialog's *unsaved draft id* (`svc-new-<epoch-ms>`), not the real
+   service UUID minted on save. `provider-loop.ts` rejects any negotiation whose
+   serviceId doesn't resolve → those 8 rejected everything → read as "no demand".
+   Only `portfolio-hedge` had a real UUID. Fixed: real UUIDs mapped on all three
+   Railway workers + `.env`; `parseServiceMap` now hard-fails on draft ids.
+2. **The published CAP client failed 100% of hires** — two bugs: `role=requester`
+   (CAP 400s; must be `buyer`) and no `Content-Type` on bodyless POSTs like
+   `payOrder` (CAP 400 `CODEC`). `hire()` hits both on every purchase. Fixed +
+   the client got its first tests + republished as 0.1.1.
+
+**Shipped previously (S15).** Root `Dockerfile` (node:22-slim, runs TS on `tsx` — no build step,
 non-root `node` user) + `docker-compose.yml` running **four** long-lived processes
 from one image:
 
@@ -95,6 +109,28 @@ which also keeps rotation to a one-liner:
 
 ## Recent changes — files touched and why
 
+### Traction unblock + buyer live (2026-07-15)
+
+- **`packages/client/src/index.ts`** — three live-API fixes: `role=buyer` (was
+  `requester`, CAP 400s); `Content-Type: application/json` on **every** POST
+  (was gated on a body → bodyless `payOrder` 400'd `CODEC`). Published as
+  `@hunchxyz/cap-client@0.1.1` (0.1.0 was 100% broken).
+- **`packages/client/test/cap-client.test.ts`** (new, 9 tests) + `vitest.config.ts`,
+  `tsconfig` (`include` test), `package.json` (`test` script, vitest dep) — the
+  money path had zero tests, which is why the bugs shipped. Pins the wire
+  contract: role, Content-Type, `/backend/v1`, `X-SDK-Key`, full hire() lifecycle.
+- **`packages/oracle/src/config.ts`** — `parseServiceMap` now **throws** on unsaved
+  CROO draft ids (`svc-new-\d+`) with the fix instructions; new `suspectServiceIds`
+  flags non-UUID ids. **`worker/main.ts`** warns at boot on any suspect id (a
+  never-resolving serviceId is indistinguishable from zero demand otherwise).
+- **`packages/oracle/test/config.test.ts`** — +4 tests (draft-id reject, real-UUID
+  accept, suspect flagging).
+- **`.env` + Railway `ORACLE_SERVICE_MAP` on all 3 workers** — replaced draft ids
+  with the real service UUIDs (from Raj's CROO dashboard). **`buyer` service:**
+  `SIGNAL_BUYER_ALLOWLIST` = AlphaTrack + Polymind, `SIGNAL_BUYER_ENABLED=true`.
+
+### S15 (original)
+
 - **`Dockerfile`, `.dockerignore`** (new) — one runtime image for every process.
   Installs with `--filter @hunch/oracle...` against the frozen lockfile; keeps
   devDeps because the worker runs on `tsx`. `.dockerignore` keeps `.env` out.
@@ -136,6 +172,33 @@ which also keeps rotation to a one-liner:
 
 ## Key decisions — choices and trade-offs
 
+- **External service_ids come from React props, not an API.** CROO has **no**
+  discovery/search/catalog REST endpoint (docs confirm; `/services` 401s without a
+  browser login session; the homepage "MCP `marketplace.search`" is decorative
+  marketing pointing at `crew.network`). The `service_id` needed to hire another
+  agent is embedded in each service card's React fiber `memoizedProps` on the
+  agent's **detail** page (`agent.croo.network/agents/<agentId>`) — public, no
+  login. The store *list* card's fiber carries the AGENT id; only the detail-page
+  service card carries the SERVICE id. Harvested via the in-app browser.
+- **Confirmed external service_ids** (for the buyer allowlist): AlphaTrack
+  `top_traders` `f57a40f6-be70-4074-8f09-db46cdf51fed`; Polymind `hot_events`
+  `bfddc0e8-fb82-4115-9370-ef235c8996db`; Polymarket Broker `Market Detail`
+  `23632a1d-d232-4a4e-b928-da30a73f1dcf`; Polymarket Smart Wallet Tracker
+  `022c38ad-0be9-4ee1-8f76-d645cb182010`. Only the first two are in the live
+  allowlist — they ignore/allow empty input; the two Polymarket ones need a valid
+  market-id / 0x-wallet input or delivery fails (escrow refunds, no loss).
+- **Real service UUIDs** (our sellers): forecast `f1c77b72-…`, sentiment
+  `d69114e5-…`, research `a722d355-…`, scorecard `51b83b1c-…` (Oracle); verify
+  `286798ac-…`, watch `6d044163-…` (TruthCheck); spawn `dafdec76-…`, hedge-quote
+  `9c02208a-…`, portfolio-hedge `9eccc75e-…` (MarketDesk).
+- **Mocks agreed with the code, not with CROO.** All three money-path bugs passed
+  256 mock tests and failed on the first live call. The CAP client now has real
+  wire-contract tests; when touching any CAP request, verify against the live API
+  (a probe with the real key), not just the mock adapter.
+- **The CROO SDK (`@croo-network/sdk@0.2.1`) pay path is SAFE** — its `http-client`
+  sends `{}` + Content-Type on bodyless POSTs (`http-client.js:18-34`), so the
+  bodyless-POST bug was ours alone. The buyer loop (which pays via the SDK, not our
+  client) pays correctly. Verified by source inspection before flipping live.
 - **One worker per CROO agent, not one worker for all.** A worker authenticates as
   exactly ONE agent (one SDK key) and only receives negotiations for that agent's
   services. Three listings therefore means three worker processes with three keys
@@ -188,28 +251,32 @@ which also keeps rotation to a one-liner:
 
 ## Next steps — specific, actionable
 
-Hosting is DONE — the agents are ONLINE. What's left:
+Agents ONLINE, listings fixed, buyer LIVE, first real orders placed. What's left:
 
-1. **Rotate the three seller SDK keys.** They were pasted into a chat transcript on
-   2026-07-14. Regenerate in the CROO dashboard, update `.env`, then per service:
-   `railway variables --set 'CROO_ORACLE_SDK_KEY=<new>' -s worker-oracle` —
-   `CROO_SDK_KEY` follows automatically via the `${{…}}` reference, and the `--set`
-   triggers the redeploy.
-2. **Delete the two junk Railway services** — `@hunch/oracle-web` and
-   `degen-trader-example` (Railway auto-created them from workspace package names;
-   `@hunch/oracle-web` is the one that crash-looped), plus `probe-svc`. Dashboard
-   only — the CLI has no service-delete.
-3. **Confirm the CROO dashboard prices match `core/pricing.ts`** — specifically
-   `portfolio-hedge` = $3.00 and `scorecard` = $0.10. A mismatch silently corrupts
-   the booked-revenue metric.
-4. **Watch for the first real order.** All three sellers idle at
-   `listed orders: 0`. `railway logs -s worker-oracle` is the fastest look; each
-   worker also serves `/metrics` (Prometheus) and `/status` on its Railway port.
-5. **(Later) Take the buyer live.** It runs in dry-run and spends nothing. To arm
-   it: fill `SIGNAL_BUYER_ALLOWLIST` with vetted counterparties, set
-   `SIGNAL_BUYER_ENABLED=true`. Caps: $5/UTC-day, $1/order. Leave off until the
-   sellers have proven themselves.
-6. **(Optional) A docs-only push to `main` redeploys all four services.** Harmless
-   (a few seconds of reconnect), but `build.watchPatterns` in `railway.json` would
-   stop it. Not done deliberately — a wrong pattern list silently ships stale code,
-   which is worse than a restart.
+1. **Confirm the buyer loop settles, not just negotiates.** Round 1 placed 2 orders
+   (`creating`). Verify they reach `completed` and money actually moved:
+   `railway logs -s buyer` + `curl -H "X-SDK-Key: $CROO_REQUESTER_SDK_KEY"
+   "$CROO_API_URL/backend/v1/orders?role=buyer&page_size=20"`. Watch daily spend
+   stays under the $5 cap. If orders stall at `creating`, the counterparty didn't
+   accept — fail-soft, no loss.
+2. **Seed inbound demand from other teams** (the real traction number). Post the
+   hire-swap in the hackathon channel: "drop your service_id, I'll route real
+   orders to it." Each becomes a genuine external order on our sellers (currently
+   1 provider order total — the AlphaTrack test was us hiring *out*).
+3. **Add the two Polymarket counterparties** once a valid input is known — pass
+   `requirements` with a real market slug / 0x wallet, add their service_ids
+   (above) to `SIGNAL_BUYER_ALLOWLIST`, re-`--set` on the `buyer` service.
+4. **Fix the `spike:requester` replay bug** (`worker/spike-requester.ts`) — it
+   resolves on ANY `order_completed` WS event, including replayed historical ones,
+   so it false-"completes" on a stale order instead of the one it just negotiated.
+   Minor (validation-only script), but it masked the AlphaTrack hire mid-flight.
+5. **Rotate the seller + requester SDK keys** — pasted into transcripts. Regenerate
+   in CROO, update `.env` + Railway (`CROO_SDK_KEY` follows the `${{…}}` reference).
+6. **Delete junk Railway services** (`@hunch/oracle-web`, `degen-trader-example`,
+   `probe-svc`) — dashboard only, CLI has no service-delete.
+7. **Confirm CROO dashboard prices match `core/pricing.ts`** (`portfolio-hedge`
+   $3.00, `scorecard` $0.10) — a mismatch corrupts the booked-revenue metric.
+8. **Pick demo questions that map to OPEN Hunch markets.** The forecast test
+   returned `no_market` (honest, but flat on video). Before recording, query
+   `playhunch.xyz/api/partner/catalogue` for live markets and choose questions that
+   return a real probability.
