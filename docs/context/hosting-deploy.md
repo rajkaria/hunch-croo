@@ -28,25 +28,29 @@ Merged to `main` (`a717d1a`). Gate green: typecheck + **269 tests** (260 oracle
 **🟢 LIVE WITH REAL ORDERS (2026-07-15).** All four processes on Railway (project
 **energetic-benevolence** `117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
 rajkaria98@gmail.com, deploys from `main`). All three sellers log `websocket
-connected`. **The buyer is LIVE** (`SIGNAL_BUYER_ENABLED=true`) and its first
-round hired both allowlisted counterparties. Real orders now exist on-chain.
+connected`. **The buyer is LIVE** (`SIGNAL_BUYER_ENABLED=true`) and placing real
+orders every round — but they **self-reject on a price bug** (next-step #1), so it
+isn't spending yet. Two manual hires DID settle end-to-end (forecast + AlphaTrack).
 
 | Railway service | Config | Notes |
 |---|---|---|
 | `worker-oracle` | root `railway.json` | volume `/app/data` (ledger); real service UUIDs mapped |
 | `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — ledger is Oracle's |
 | `worker-marketdesk` | root `railway.json` | hedge caps set; real UUIDs mapped |
-| `buyer` | `railway.buyer.json` | **LIVE** — allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
+| `buyer` | `railway.buyer.json` | **LIVE but self-rejecting** — see next-step #1 (price bug); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
 
 **Orders placed (live CROO, real Base USDC):**
-- `forecast` self-hire — completed, $0.25 (integration test, NOT traction). Full
+- `forecast` self-hire — **completed**, $0.25 (integration test, NOT traction). Full
   lifecycle `created→paying→paid→delivering→evaluating→completed`, real tx hashes.
   Handler searched 198 open Hunch markets, returned `no_market` + near-misses +
   provenance (fail-soft held — never faked a probability).
-- AlphaTrack `top_traders` external hire — delivered, $0.10. Real Binance
-  top-trader leaderboard returned, on-chain `deliverTxHash`. Proved the
-  fiber-extracted service_id is genuine.
-- Buyer loop round 1 — 2 outbound orders (AlphaTrack + Polymind) auto-placed.
+- AlphaTrack `top_traders` external hire — **completed**, $0.10 (paid by hand via
+  raw API). Real Binance top-trader leaderboard, on-chain `deliverTxHash`. Proved
+  the fiber-extracted service_id is genuine AND that a full external hire settles.
+- **Buyer loop orders all `rejected`** — the loop negotiates and creates orders but
+  its own cap gate rejects each with `invalid_price: NaN` (next-step #1). So the
+  buyer is armed and placing real orders, but **not yet successfully spending**.
+  Cap-safe (no money moves on a reject), but no autonomous traction until fixed.
 
 **The two defects that made traction impossible (both fixed this session).**
 Neither showed in the 256-test mock suite; both surfaced on first contact with
@@ -253,12 +257,18 @@ which also keeps rotation to a one-liner:
 
 Agents ONLINE, listings fixed, buyer LIVE, first real orders placed. What's left:
 
-1. **Confirm the buyer loop settles, not just negotiates.** Round 1 placed 2 orders
-   (`creating`). Verify they reach `completed` and money actually moved:
-   `railway logs -s buyer` + `curl -H "X-SDK-Key: $CROO_REQUESTER_SDK_KEY"
-   "$CROO_API_URL/backend/v1/orders?role=buyer&page_size=20"`. Watch daily spend
-   stays under the $5 cap. If orders stall at `creating`, the counterparty didn't
-   accept — fail-soft, no loss.
+1. **FIX THE BUYER PRICE BUG — every loop order self-rejects (4th mock-invisible
+   bug, diagnosed not fixed).** The loop negotiates and orders get *created*, then
+   the buyer's own cap gate rejects them: CROO returns `rejectReason: invalid_price:
+   unusable price NaN`. Root cause: the created order carries its value in
+   **`order.amount`** (USDC base units — `100000.00000000` = $0.10, ÷ 1e6), but
+   `order.price` is **empty** on the live API. `adapters/croo/transport.ts:62` and
+   `core/signal-buyer/purchase.ts:99` both read `order.price` → `NaN` →
+   `policy.ts:84` (`!Number.isFinite`) → `invalid_price`, no money moves. (The one
+   AlphaTrack order that DID complete was paid by hand via the raw API, bypassing
+   this gate.) Fix: derive priceUsd from `amount` (÷ 1e6) when `price` is empty; add
+   a live-shape test (the mock populates `price`, which is why this shipped). Until
+   then the buyer churns negotiate→reject and never spends — cap-safe but useless.
 2. **Seed inbound demand from other teams** (the real traction number). Post the
    hire-swap in the hackathon channel: "drop your service_id, I'll route real
    orders to it." Each becomes a genuine external order on our sellers (currently
