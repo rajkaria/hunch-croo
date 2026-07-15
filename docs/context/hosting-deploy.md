@@ -25,21 +25,21 @@ Merged to `main` (`a717d1a`). Gate green: typecheck + **269 tests** (260 oracle
 
 ## Current state — what's working, deployed, broken
 
-**🟢 LIVE WITH REAL ORDERS (2026-07-15).** All four processes on Railway (project
+**🟢 LIVE AND SPENDING (2026-07-15).** All four processes on Railway (project
 **energetic-benevolence** `117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
 rajkaria98@gmail.com, deploys from `main`). All three sellers log `websocket
-connected`. **The buyer is LIVE** (`SIGNAL_BUYER_ENABLED=true`) and placing real
-orders every round. The **price-NaN self-reject is FIXED** (next-step #1) — the
-buyer now derives USD from `order.amount` when the live `price` is empty, so it
-will actually spend on the next deploy. Two manual hires settled end-to-end
-(forecast + AlphaTrack). Gate green: typecheck + **277 oracle tests**.
+connected`. **The buyer is LIVE and PAYING** (`SIGNAL_BUYER_ENABLED=true`): the
+price-NaN self-reject is FIXED and CONFIRMED on live (main `6a9d06e`) — a real
+loop order paid escrow, `priceUsd: 0.1`, tx `0x68b045eb…`, zero `invalid_price`,
+spend well under the $5/day cap. Two manual hires settled end-to-end (forecast +
+AlphaTrack). Gate green: typecheck + **279 oracle tests**.
 
 | Railway service | Config | Notes |
 |---|---|---|
 | `worker-oracle` | root `railway.json` | volume `/app/data` (ledger); real service UUIDs mapped |
 | `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — ledger is Oracle's |
 | `worker-marketdesk` | root `railway.json` | hedge caps set; real UUIDs mapped |
-| `buyer` | `railway.buyer.json` | **LIVE; price bug FIXED** (deploy pending to spend); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
+| `buyer` | `railway.buyer.json` | **LIVE + PAYING** (price bug fixed & confirmed on live `6a9d06e`); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
 
 **Orders placed (live CROO, real Base USDC):**
 - `forecast` self-hire — **completed**, $0.25 (integration test, NOT traction). Full
@@ -259,17 +259,22 @@ which also keeps rotation to a one-liner:
 
 Agents ONLINE, listings fixed, buyer LIVE, first real orders placed. What's left:
 
-1. ~~**FIX THE BUYER PRICE BUG**~~ **✅ FIXED (2026-07-15, deploy pending).** The
-   created order carried its value in **`order.amount`** (base units,
-   `100000.00000000` = $0.10, ÷ 1e6) with `order.price` **empty** on the live API;
-   the mock populated `price`, so the buyer self-rejected every real order with
-   `invalid_price: unusable price NaN`. Fix: new `policy.orderPriceUsd(order)`
-   prefers a valid `price`, else derives `amount ÷ 1e6`; `CapOrder` gained an
-   `amount` field, `adapters/croo/transport.ts#toCapOrder` surfaces it, and the
-   gate (`buyer.ts`) + paid-log (`purchase.ts`) read through it. Live-shape +
-   transport tests added (the mock now models the empty-price/amount shape).
-   **Next: deploy so the buyer spends, then confirm a loop order reaches
-   `completed` and daily spend stays under the $5 cap.**
+1. ~~**FIX THE BUYER PRICE BUG**~~ **✅ FIXED & CONFIRMED ON LIVE (2026-07-15, main
+   `6a9d06e`).** The committed diagnosis was WRONG on two counts — a diagnostic
+   deploy (`e606363`) captured the real created-order shape:
+   `price: "100000"` (NOT empty — USDC **base units**, ÷1e6 = $0.10),
+   `amount: "100000.00000000"` (same value), and
+   `paymentToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"` — the USDC
+   **contract address**, not the ticker "USDC". So the NaN came from the token
+   guard rejecting anything but literal "USDC", and the value was base units, not
+   dollars (the first fix, deriving from `amount`, still self-rejected because the
+   token check failed first). Fix: `policy.orderPriceUsd` recognises USDC by
+   contract address (or ticker) and reads price/amount as **base units ÷ 1e6**;
+   removed the decimal-dollars `parsePriceUsd`. **The mock now emits the real wire
+   shape** (base units + USDC address) so a conversion bug fails a test — the
+   lesson from "mocks agreed with the code, not CROO". CONFIRMED live: a loop order
+   paid escrow, `priceUsd: 0.1`, tx `0x68b045eb…`, spend under the $5/day cap.
+   Order sits at `paid` awaiting counterparty delivery to reach `completed`.
 2. **Seed inbound demand from other teams** (the real traction number). Post the
    hire-swap in the hackathon channel: "drop your service_id, I'll route real
    orders to it." Each becomes a genuine external order on our sellers (currently
