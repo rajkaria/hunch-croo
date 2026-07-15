@@ -127,38 +127,46 @@ export function decidePurchase(args: {
   return { approved: true };
 }
 
-/** Parse a CAP order price string (USDC, decimal) to a number. */
-export function parsePriceUsd(price: string, token: string): number {
-  if (token && token.toUpperCase() !== "USDC") return Number.NaN;
-  const value = Number.parseFloat(price);
-  return Number.isFinite(value) ? value : Number.NaN;
-}
-
 /** USDC settles in 6 decimals, so base units ÷ 1e6 = dollars. */
 const USDC_DECIMALS = 6;
 
 /**
+ * `paymentToken` on the live CAP API is the ERC-20 CONTRACT ADDRESS, not the
+ * ticker. Base mainnet USDC — the only token our desk settles in. Matched
+ * case-insensitively; the literal "USDC" is also accepted for the mock and any
+ * ticker-style caller.
+ */
+const USDC_TOKENS = new Set<string>([
+  "usdc",
+  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", // Base mainnet USDC
+]);
+
+function isUsdc(token: string): boolean {
+  return USDC_TOKENS.has(token.trim().toLowerCase());
+}
+
+/**
  * The real USD value of a created order — the number the pay-gate checks.
  *
- * WHY this exists: the live CAP API returns `price: ""` and carries the value
- * in `amount` (paymentToken base units, "100000.00000000" = $0.10). The mock
- * populated `price`, so an empty-`price` live order silently parsed to NaN and
- * the buyer self-rejected EVERY real order (`invalid_price`). Prefer a valid,
- * positive `price`; otherwise derive `amount ÷ 10^6`. Non-USDC settlement is
- * unpriceable in dollars here → NaN, and the gate then declines (no money moves).
+ * WHY this is subtle (it cost a live incident): the CAP API does NOT return a
+ * decimal-dollar price. A created $0.10 order reads
+ *   price: "100000", amount: "100000.00000000",
+ *   paymentToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+ * i.e. the value is in USDC **base units** (÷1e6) and the token is the **contract
+ * address**, not "USDC". The old code treated `price` as decimal dollars and
+ * gated the token on the literal string "USDC", so every real order died as
+ * `invalid_price: NaN`. Here: reject non-USDC settlement (→ NaN → the gate
+ * declines, no money moves), else read `price` (or `amount`) as base units ÷ 1e6.
  */
 export function orderPriceUsd(order: {
   price: string;
   paymentToken: string;
   amount?: string;
 }): number {
-  const priced = parsePriceUsd(order.price, order.paymentToken);
-  if (Number.isFinite(priced) && priced > 0) return priced;
-
-  // `price` was empty/zero (the live shape) — fall back to base-units `amount`.
-  if (order.paymentToken && order.paymentToken.toUpperCase() !== "USDC") {
-    return Number.NaN;
-  }
-  const base = Number.parseFloat(order.amount ?? "");
+  if (!isUsdc(order.paymentToken)) return Number.NaN;
+  // price and amount are both USDC base units; price is the SDK's canonical
+  // field, amount a redundant fallback for the rare empty-price order.
+  const raw = order.price !== "" ? order.price : (order.amount ?? "");
+  const base = Number.parseFloat(raw);
   return Number.isFinite(base) && base > 0 ? base / 10 ** USDC_DECIMALS : Number.NaN;
 }

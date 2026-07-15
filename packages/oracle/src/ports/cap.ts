@@ -39,15 +39,16 @@ export interface CapOrder {
   negotiationId: string;
   serviceId: string;
   requesterAgentId: string;
-  /** Decimal USDC price string. EMPTY on the live API — the value lives in
-   * `amount` instead. Never read this directly for a money decision; go through
-   * `policy.orderPriceUsd`, which falls back to `amount`. */
+  /** Order value in `paymentToken` **base units** (e.g. "100000" = $0.10 for
+   * 6-decimal USDC) — NOT decimal dollars. Never read this directly for a money
+   * decision; go through `policy.orderPriceUsd`, which knows the units + token. */
   price: string;
-  /** Order value in `paymentToken` base units (decimal string), e.g.
-   * "100000.00000000" = $0.10 for 6-decimal USDC. The live CAP API populates
-   * THIS and leaves `price` empty; the mock populates `price`. A field the
-   * SDK's own `Order` type does not declare. See docs/context/hosting-deploy.md. */
+  /** Same value as `price`, as a decimal base-units string ("100000.00000000").
+   * A redundant field the SDK's `Order` type does not declare; kept only as a
+   * fallback for the rare order that arrives with an empty `price`. */
   amount?: string;
+  /** ERC-20 contract address of the settlement token (e.g. Base USDC
+   * "0x8335…2913"), NOT the ticker. `orderPriceUsd` recognises the USDC address. */
   paymentToken: string;
   status: string;
   payTxHash?: string;

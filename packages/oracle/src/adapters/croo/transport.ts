@@ -138,21 +138,7 @@ export class CrooCapTransport
   }
 
   async getOrder(orderId: string): Promise<CapOrder> {
-    const raw = await this.client.getOrder(orderId);
-    // TEMP DIAG (remove after live-shape confirmed): dump the raw order's field
-    // set + every candidate price field, so we can see EXACTLY what the live API
-    // returns for a created order (the `invalid_price: NaN` self-reject).
-    const r = raw as unknown as Record<string, unknown>;
-    this.logger.info("DIAG raw CROO order shape", {
-      keys: Object.keys(r ?? {}),
-      price: r?.["price"],
-      amount: r?.["amount"],
-      feeAmount: r?.["feeAmount"],
-      fundAmount: r?.["fundAmount"],
-      paymentToken: r?.["paymentToken"],
-      status: r?.["status"],
-    });
-    return toCapOrder(raw);
+    return toCapOrder(await this.client.getOrder(orderId));
   }
 
   async listPaidOrders(): Promise<CapOrder[]> {

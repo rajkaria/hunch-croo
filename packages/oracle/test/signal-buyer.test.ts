@@ -5,12 +5,14 @@ import {
   decidePurchase,
   isAllowlisted,
   orderPriceUsd,
-  parsePriceUsd,
   utcDay,
   type AllowlistEntry,
   type BuyerBudget,
   type SpendSnapshot,
 } from "../src/core/signal-buyer/policy.js";
+
+/** Base mainnet USDC contract address — the live `paymentToken` (not "USDC"). */
+const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 import {
   InMemorySignalStore,
   summarizeCounterparties,
@@ -88,49 +90,49 @@ describe("signal-buyer policy", () => {
     expect(d).toMatchObject({ approved: false, code: "invalid_price" });
   });
 
-  it("isAllowlisted gates by serviceId; parsePriceUsd rejects non-USDC", () => {
+  it("isAllowlisted gates by serviceId", () => {
     expect(isAllowlisted([entry()], "svc-a")).toBe(true);
     expect(isAllowlisted([entry()], "svc-x")).toBe(false);
-    expect(parsePriceUsd("0.50", "USDC")).toBe(0.5);
-    expect(Number.isNaN(parsePriceUsd("0.50", "DAI"))).toBe(true);
   });
 });
 
-// ── orderPriceUsd: the LIVE order shape (empty price, value in `amount`) ─────
-// Regression guard for the invalid_price:NaN self-reject. The live CAP API
-// leaves `price` EMPTY and carries the value in `amount` (base units, 1e6);
-// the mock populated `price`, which is exactly why this shipped unnoticed.
-describe("orderPriceUsd — reads price OR base-units amount", () => {
-  it("derives USD from base-units `amount` when live `price` is empty", () => {
-    // "100000.00000000" base units ÷ 1e6 = $0.10 (the CROO scorecard floor)
+// ── orderPriceUsd: the REAL live order shape ────────────────────────────────
+// Ground truth captured off the live API (2026-07-15): a $0.10 order reads
+//   price: "100000", amount: "100000.00000000",
+//   paymentToken: "0x8335…2913"  (the USDC CONTRACT ADDRESS, not "USDC")
+// i.e. value in USDC base units (÷1e6), token as an address. The old code
+// treated price as decimal dollars and gated on the literal "USDC" → every real
+// order died as invalid_price:NaN.
+describe("orderPriceUsd — base units + USDC contract address", () => {
+  it("converts base-units `price` with the USDC contract-address token to USD", () => {
+    expect(orderPriceUsd({ price: "100000", paymentToken: USDC })).toBeCloseTo(0.1, 9);
+    expect(orderPriceUsd({ price: "500000", paymentToken: USDC })).toBeCloseTo(0.5, 9);
+    expect(orderPriceUsd({ price: "9990000", paymentToken: USDC })).toBeCloseTo(9.99, 9);
+  });
+
+  it("accepts the literal ticker \"USDC\" too (case-insensitive)", () => {
+    expect(orderPriceUsd({ price: "100000", paymentToken: "USDC" })).toBeCloseTo(0.1, 9);
+    expect(orderPriceUsd({ price: "100000", paymentToken: "usdc" })).toBeCloseTo(0.1, 9);
+  });
+
+  it("falls back to base-units `amount` when `price` is empty", () => {
     expect(
-      orderPriceUsd({ price: "", paymentToken: "USDC", amount: "100000.00000000" }),
+      orderPriceUsd({ price: "", paymentToken: USDC, amount: "100000.00000000" }),
     ).toBeCloseTo(0.1, 9);
   });
 
-  it("uses `price` when present (mock / back-compat shape)", () => {
-    expect(orderPriceUsd({ price: "0.50", paymentToken: "USDC" })).toBe(0.5);
+  it("is NaN when the value is unusable (gate then declines)", () => {
+    expect(Number.isNaN(orderPriceUsd({ price: "", paymentToken: USDC }))).toBe(true);
+    expect(Number.isNaN(orderPriceUsd({ price: "0", paymentToken: USDC }))).toBe(true);
   });
 
-  it("prefers a valid `price` over `amount` when both are present", () => {
+  it("is NaN for a non-USDC settlement token", () => {
+    // e.g. DAI / a random ERC-20 / native-ETH zero address → unpriceable here
+    expect(Number.isNaN(orderPriceUsd({ price: "100000", paymentToken: "DAI" }))).toBe(true);
     expect(
-      orderPriceUsd({ price: "0.25", paymentToken: "USDC", amount: "999000000" }),
-    ).toBe(0.25);
-  });
-
-  it("is NaN when neither price nor amount is usable (gate then declines)", () => {
-    expect(Number.isNaN(orderPriceUsd({ price: "", paymentToken: "USDC" }))).toBe(true);
-    expect(
-      Number.isNaN(orderPriceUsd({ price: "", paymentToken: "USDC", amount: "" })),
-    ).toBe(true);
-    expect(
-      Number.isNaN(orderPriceUsd({ price: "0", paymentToken: "USDC", amount: "0" })),
-    ).toBe(true);
-  });
-
-  it("is NaN for non-USDC settlement even with an amount", () => {
-    expect(
-      Number.isNaN(orderPriceUsd({ price: "", paymentToken: "DAI", amount: "100000" })),
+      Number.isNaN(
+        orderPriceUsd({ price: "100000", paymentToken: "0x0000000000000000000000000000000000000000" }),
+      ),
     ).toBe(true);
   });
 });
@@ -261,15 +263,16 @@ describe("SignalBuyer round", () => {
     ]);
   });
 
-  it("BUYS a live-shape order — empty price, value in `amount` (invalid_price:NaN regression)", async () => {
+  it("BUYS a live-shape order — base-units price + USDC contract-address token (invalid_price:NaN regression)", async () => {
     const store = new InMemorySignalStore();
-    // The exact live CROO shape: price EMPTY, value carried in base-units amount.
+    // The mock emits the exact live wire shape: value in USDC base units, token =
+    // the contract address. A $0.10 hire proves the buyer prices it — before the
+    // fix this died as invalid_price:NaN (token wasn't literal "USDC") and never spent.
     const transport = new MockCapRequesterTransport([
       {
         serviceId: "svc-a",
         agentId: "agent-a",
-        price: "",
-        amount: "100000.00000000", // ÷1e6 = $0.10
+        price: "0.10",
         deliverable: { schema: JSON.stringify({ probability: 0.6 }) },
       },
     ]);
@@ -285,7 +288,6 @@ describe("SignalBuyer round", () => {
     );
     const report = await buyer.runRound();
 
-    // Before the fix: parsePriceUsd("") → NaN → invalid_price → purchased 0, skipped 1.
     expect(report.purchased).toBe(1);
     expect(report.skipped).toBe(0);
     expect(report.spentUsd).toBeCloseTo(0.1, 5);
@@ -293,6 +295,23 @@ describe("SignalBuyer round", () => {
     expect(p?.status).toBe("delivered");
     expect(p?.priceUsd).toBeCloseTo(0.1, 5);
     expect(report.signals).toHaveLength(1);
+  });
+
+  it("declines an order in a non-USDC token — unpriceable, no escrow", async () => {
+    const store = new InMemorySignalStore();
+    const transport = new MockCapRequesterTransport([
+      { serviceId: "svc-a", agentId: "agent-a", price: "0.10", paymentToken: "DAI",
+        deliverable: { text: "unreachable" } },
+    ]);
+    const buyer = new SignalBuyer(
+      { transport, store, clock },
+      { allowlist: [{ serviceId: "svc-a", agentId: "agent-a", label: "Alpha Terminal", category: "research" }],
+        budget, live: true },
+    );
+    const report = await buyer.runRound();
+    expect(report.purchased).toBe(0);
+    expect(report.spentUsd).toBe(0);
+    expect(report.purchases[0]?.reason).toContain("invalid_price");
   });
 
   it("stops mid-round when the daily cap is exhausted", async () => {

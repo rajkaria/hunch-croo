@@ -14,15 +14,26 @@ import type {
  * Events are emitted synchronously, mirroring MockCapTransport, so the buyer's
  * negotiate → pay → deliver lifecycle runs to completion inside one microtask.
  */
+/** Base mainnet USDC contract address — what the live CAP API sends as the
+ * order's `paymentToken` (NOT the ticker "USDC"). The mock defaults to it so
+ * every test exercises the real address + base-units shape. */
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
+/** Author-friendly dollars → USDC base units string (6 decimals), the way the
+ * live API actually carries an order's value. "0.50" → "500000". */
+function dollarsToBaseUnits(dollars: string): string {
+  const n = Number.parseFloat(dollars);
+  return Number.isFinite(n) ? Math.round(n * 1_000_000).toString() : "";
+}
+
 export interface MockCounterparty {
   serviceId: string;
   agentId?: string;
-  /** Decimal USDC string the counterparty quotes at order_created. Pass "" to
-   * model the LIVE shape, where the value rides in `amount` instead. */
+  /** Price the counterparty quotes, in author-friendly DOLLARS ("0.50"). The
+   * mock converts this to the live wire shape (base units + `USDC_ADDRESS`). */
   price: string;
-  /** Order value in base units (decimal string), e.g. "100000.00000000" = $0.10.
-   * Mirrors the live API, which leaves `price` empty and carries value here. */
-  amount?: string;
+  /** Override the settlement token (defaults to the Base USDC contract address).
+   * Set a non-USDC token to exercise the "unpriceable → decline" path. */
   paymentToken?: string;
   deliverable?: { text?: string; schema?: string };
   behavior?:
@@ -81,14 +92,18 @@ export class MockCapRequesterTransport implements CapRequesterTransport {
     }
 
     const orderId = `order-${++this.seq}`;
+    // Emit the REAL live wire shape: value in USDC base units, token = contract
+    // address. `orderPriceUsd` converts back to dollars — so a mock bug in this
+    // conversion now fails a test instead of shipping (the last one didn't).
+    const base = dollarsToBaseUnits(cp.price);
     this.orders.set(orderId, {
       orderId,
       negotiationId,
       serviceId: cp.serviceId,
       requesterAgentId: "mock-signal-buyer",
-      price: cp.price,
-      ...(cp.amount !== undefined ? { amount: cp.amount } : {}),
-      paymentToken: cp.paymentToken ?? "USDC",
+      price: base,
+      amount: base,
+      paymentToken: cp.paymentToken ?? USDC_ADDRESS,
       status: "created",
     });
     this.emit({

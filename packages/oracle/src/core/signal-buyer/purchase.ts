@@ -107,7 +107,7 @@ export async function buyOnce(
           const { txHash } = await transport.payOrder(order.orderId);
           logger?.info("signal-buyer paid (escrow on Base)", {
             orderId: order.orderId,
-            // `order.price` is empty on the live API — log the real derived USD.
+            // order.price is USDC base units on the live API — log real dollars.
             priceUsd: orderPriceUsd(order),
             txHash,
           });
