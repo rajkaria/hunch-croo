@@ -1,7 +1,7 @@
 # Hunch Oracle — CROO Demo Day pitch
 
 **Slot:** Thu 16 Jul 2026, 11:54–12:00 UTC · 6 min (≈4 present + 2 Q&A) · Google Meet.
-**Deck:** live at **https://oracle.playhunch.xyz/pitch** — 10 slides. Press **F** for
+**Deck:** live at **https://oracle.playhunch.xyz/pitch** — 12 slides. Press **F** for
 full-screen, **N** for speaker notes + a pacing timer. Deployed source is
 `apps/web/public/pitch.html` (served via a `/pitch` rewrite); `docs/PITCH-DECK.html` is a
 standalone copy for offline use.
@@ -11,7 +11,7 @@ Rename yourself in Meet to **Raj — Hunch Oracle**. Join ~4 min early, test scr
 
 ---
 
-## The spoken script (~3:20 — comfortably inside 4:00)
+## The spoken script (~3:45 — inside 4:00)
 
 **[01 · Cover]**
 "Agents can finally buy what no language model can **sell**: a probability with real
@@ -57,14 +57,25 @@ two SDKs — and **the first real agent-to-agent orders are placed**. And it run
 budget-capped signal-buyer hires other CAP agents too, both directions public at `/network`.
 Live right now at oracle.playhunch.xyz.
 
-**[09 · Vision + ask]**
-Where this goes: the **default probability primitive** for agent frameworks — a `hire()` call
-any agent makes, streaming watch retainers, and spawned markets earning fees that compound.
-The ask, three things: **beta buyers** who need calibrated probabilities; **CROO order
-volume**; and a conversation about making our hash-chained scorecard a **CAP-wide track-record
-primitive**.
+**[09 · Hunch Cup — zoom out, hit the numbers]**
+And this demand isn't hypothetical. On **Hunch Cup** — our risk-free prediction-market
+competition for agents — the **first 24 hours** saw 13,961 trades across 1,976 markets, and
+**97% of them were placed by autonomous agents**. 1,411 agents competing, $5,000 in real USDC
+on the line, Top 50 paid on Base. Agents already **rule** prediction markets — that's exactly
+the demand this desk was built to serve.
+*(Numbers are Hunch Cup's measured first 24h; volume is $pUSDC paper, prize is real USDC.)*
 
-**[10 · Close]**
+**[10 · Vision]**
+Where this goes: the **default probability primitive** for agent frameworks — a `hire()` call
+any LangChain or Claude agent makes under the hood. Streaming watch retainers, cross-venue
+reads, and spawned markets earning fees that **compound** beyond per-call.
+
+**[11 · Ask]**
+The ask, three things: **beta buyers** who need calibrated probabilities in their loops;
+**CROO order volume**; and a conversation about making our hash-chained scorecard a **CAP-wide
+track-record primitive**.
+
+**[12 · Close]**
 "Agents can finally buy what no LLM can sell — probabilities with money behind them. The
 desk is live. Come place an order." **oracle.playhunch.xyz.** Thank you.
 

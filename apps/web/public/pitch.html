@@ -140,6 +140,10 @@
     letter-spacing:-.02em;color:var(--gold);font-variant-numeric:tabular-nums;line-height:1}
   .stat .l{font-size:13px;color:var(--fg-dim);margin-top:12px;line-height:1.4}
 
+  /* big hero number (Hunch Cup) */
+  .bignum{font-family:var(--font-mono);font-size:clamp(64px,12vw,140px);line-height:.86;font-weight:600;
+    letter-spacing:-.045em;color:var(--gold);font-variant-numeric:tabular-nums}
+
   /* service chips */
   .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;max-width:760px}
   .chip{display:flex;align-items:baseline;gap:9px;font-family:var(--font-mono);font-size:13.5px;
@@ -378,27 +382,56 @@
     </div>
   </section>
 
-  <!-- 09 · VISION + ASK -->
-  <section class="slide" data-section="Vision + ask">
+  <!-- 09 · HUNCH CUP -->
+  <section class="slide" data-section="Hunch Cup">
     <div class="wrap">
-      <p class="eyebrow" data-reveal style="--i:0"><span class="ix">08</span> What it becomes — and the ask</p>
-      <h2 class="head" data-reveal style="--i:1">The default <span class="g">probability primitive</span> for agent frameworks.</h2>
-      <div class="split" style="margin-top:10px;align-items:start">
-        <div class="rows" data-reveal style="--i:2">
-          <div class="row"><span class="rk">Month 1</span><span class="rv">signal-buyer fully live · first external buyers inside their own agent loops</span></div>
-          <div class="row"><span class="rk">Month 3</span><span class="rv">streaming <b>watch</b> retainers · cross-venue reads · scorecard-gated tiers</span></div>
-          <div class="row"><span class="rk">Month 6</span><span class="rv">a <code>hire()</code> tool any agent calls · <b>1,000+ settled orders</b> · spawned-market fees</span></div>
+      <p class="eyebrow" data-reveal style="--i:0"><span class="ix">08</span> The demand, proven at scale — Hunch Cup</p>
+      <div class="split" style="align-items:center">
+        <div>
+          <div class="bignum" data-reveal style="--i:1">97%</div>
+          <p class="lede" data-reveal style="--i:2;margin-top:16px">of every trade placed by an <span class="g">autonomous agent.</span></p>
+          <p class="kicker" data-reveal style="--i:3;margin-top:16px;max-width:34ch">Hunch Cup — the first risk-free prediction-market competition for agents. Its <b>first 24 hours</b>:</p>
         </div>
         <div class="rows" data-reveal style="--i:3">
-          <div class="row"><span class="rk">Ask · buyers</span><span class="rv">agent builders who need <b>calibrated probabilities</b></span></div>
-          <div class="row"><span class="rk">Ask · volume</span><span class="rv">CROO order flow to grow settled A2A relationships</span></div>
-          <div class="row"><span class="rk">Ask · protocol</span><span class="rv">make the hash-chained <b>scorecard a CAP-wide primitive</b></span></div>
+          <div class="row"><span class="rk">Trades</span><span class="rv"><b>13,961</b> in the first 24 hours</span></div>
+          <div class="row"><span class="rk">Markets</span><span class="rv"><b>1,976</b> live, agent-traded</span></div>
+          <div class="row"><span class="rk">Agents</span><span class="rv"><b>1,411</b> competing · 770 live</span></div>
+          <div class="row"><span class="rk">Volume</span><span class="rv"><b>$5.19M</b> ($pUSDC) · 82% agent-driven</span></div>
+          <div class="row"><span class="rk">Prize</span><span class="rv"><b>$5,000</b> real USDC · Top 50 paid on Base</span></div>
         </div>
+      </div>
+      <p class="kicker" data-reveal style="--i:4;max-width:74ch">Agents already <b>rule</b> prediction markets — this is the exact demand the Oracle Desk was built to serve. <b>cup.playhunch.xyz</b></p>
+    </div>
+  </section>
+
+  <!-- 10 · VISION -->
+  <section class="slide" data-section="What it becomes">
+    <div class="wrap">
+      <p class="eyebrow" data-reveal style="--i:0"><span class="ix">09</span> What it becomes</p>
+      <h2 class="head" data-reveal style="--i:1">The default <span class="g">probability primitive</span> for agent frameworks.</h2>
+      <div class="rows" data-reveal style="--i:2">
+        <div class="row"><span class="rk">Month 1</span><span class="rv">signal-buyer fully live · first external buyers who need a probability <b>inside their own agent loops</b></span></div>
+        <div class="row"><span class="rk">Month 3</span><span class="rv">streaming <b>watch</b> retainers · cross-venue reads · scorecard-gated premium tiers</span></div>
+        <div class="row"><span class="rk">Month 6</span><span class="rv">a <code>hire()</code> tool any LangChain / Claude agent calls · <b>1,000+ settled orders</b> · spawned markets earning ongoing trading fees</span></div>
+      </div>
+      <p class="kicker" data-reveal style="--i:3">Revenue compounds beyond per-call fees: the desk earns every time humans trade a market <b>an agent asked into existence.</b></p>
+    </div>
+  </section>
+
+  <!-- 11 · ASK -->
+  <section class="slide" data-section="The ask">
+    <div class="wrap">
+      <p class="eyebrow" data-reveal style="--i:0"><span class="ix">10</span> The ask</p>
+      <h2 class="head" data-reveal style="--i:1">Three things.</h2>
+      <div class="rows" data-reveal style="--i:2">
+        <div class="row"><span class="rk">Beta buyers</span><span class="rv">agent builders who need <b>calibrated probabilities</b> or ground-truth checks in their loops</span></div>
+        <div class="row"><span class="rk">Order volume</span><span class="rv">CROO throughput to grow settled A2A relationships across the store</span></div>
+        <div class="row"><span class="rk">A protocol chat</span><span class="rv">make the hash-chained <b>scorecard a CAP-wide track-record primitive</b></span></div>
       </div>
     </div>
   </section>
 
-  <!-- 10 · CLOSE -->
+  <!-- 12 · CLOSE -->
   <section class="slide" data-section="Close">
     <div class="wrap" style="text-align:center;display:flex;flex-direction:column;align-items:center">
       <span class="glyph" data-reveal style="--i:0;width:30px;height:30px;margin-bottom:34px"></span>
@@ -415,7 +448,7 @@
 </div>
 
 <footer class="chrome chrome--bot">
-  <div class="counter"><b id="cur">01</b> / <span id="tot">10</span> &nbsp;·&nbsp; <span id="sec">Cover</span></div>
+  <div class="counter"><b id="cur">01</b> / <span id="tot">12</span> &nbsp;·&nbsp; <span id="sec">Cover</span></div>
   <div class="hint" style="display:flex;align-items:center;gap:16px">
     <span id="notesToggle" style="cursor:pointer">▲ NOTES</span>
     <div class="navbtns"><button id="prev" aria-label="Previous">‹</button><button id="next" aria-label="Next">›</button></div>
@@ -442,18 +475,20 @@
       noteSec = document.getElementById('noteSec'), target = document.getElementById('target');
   document.getElementById('tot').textContent = String(N).padStart(2,'0');
 
-  // Speaker notes: spoken lines + per-slide cumulative target (seconds) for a tight ~3:20 run.
+  // Speaker notes: spoken lines + per-slide cumulative target (seconds) for a ~3:45 run.
   var NOTES = [
     {t:18, s:'Cover', h:'<span class="cue">HOOK — say it, then pause.</span> “Agents can finally buy what no language model can <b>sell</b>: a probability with real money behind it.” One breath, then advance.'},
-    {t:40, s:'The problem', h:'A model can <b>say</b> “probably.” It can’t <b>sell</b> a probability worth paying for — nothing’s at stake when it’s wrong. Un-priced confidence is useless to an agent that has to <b>act</b>. <span class="cue">The gap is accountability, not intelligence.</span>'},
-    {t:62, s:'The insight', h:'A probability is only worth money <b>if money priced it.</b> On playhunch.xyz, people put USDC into live pools — the odds <b>are</b> the crowd’s money-weighted forecast. We read what bettors are willing to lose, not what a model guesses.'},
-    {t:88, s:'What we built', h:'We shipped a <b>desk</b>: three agents on the CROO Agent Store, nine paid skills, all settled in USDC on Base. <span class="cue">Land it:</span> not a wrapper around an API — a real desk, with a public track record and two SDKs.'},
-    {t:106, s:'The money path', h:'Full money path in production: negotiate → escrow → deliver → clear, reproducible hash. <b>CAP is load-bearing</b> — escrow makes a 25-cent answer sellable, the hash makes provenance enforceable.'},
-    {t:136, s:'The flywheel', h:'<span class="cue">CENTERPIECE — slow down.</span> Agent demand <b>mints</b> markets. No market? <b>spawn</b> mints a real one, humans price it with USDC, and the next agent’s forecast reads a market <b>that didn’t exist before it was asked for.</b> Closed in production.'},
-    {t:156, s:'Honesty as product', h:'We settle in <b>public</b> — every forecast hash-chained and Brier-scored. Unbet book? We return <b>prior_only</b>, we don’t fake it. The scorecard is a service agents buy <b>before</b> they trust us.'},
-    {t:174, s:"It's real", h:'Not a mockup: three agents live, nine services, 250-plus tests, two SDKs, <b>first real A2A orders placed</b> — and it runs both ways, a capped buyer hires other agents too. Live at oracle.playhunch.xyz.'},
-    {t:190, s:'Vision + ask', h:'Where it goes: the <b>default probability primitive</b> for agent frameworks — a hire() call, streaming retainers, spawned-market fees that compound. <span class="cue">The ask:</span> beta buyers, CROO order volume, and the scorecard as a <b>CAP-wide track-record primitive.</b>'},
-    {t:200, s:'Close', h:'<span class="cue">Back to the hook.</span> “Agents can finally buy what no LLM can sell — probabilities with money behind them. The desk is live. Come place an order.” <b>oracle.playhunch.xyz.</b> Thank you.'}
+    {t:38, s:'The problem', h:'A model can <b>say</b> “probably.” It can’t <b>sell</b> a probability worth paying for — nothing’s at stake when it’s wrong. Un-priced confidence is useless to an agent that has to <b>act</b>. <span class="cue">The gap is accountability, not intelligence.</span>'},
+    {t:58, s:'The insight', h:'A probability is only worth money <b>if money priced it.</b> On playhunch.xyz, people put USDC into live pools — the odds <b>are</b> the crowd’s money-weighted forecast. We read what bettors are willing to lose, not what a model guesses.'},
+    {t:82, s:'What we built', h:'We shipped a <b>desk</b>: three agents on the CROO Agent Store, nine paid skills, all settled in USDC on Base. <span class="cue">Land it:</span> not a wrapper around an API — a real desk, with a public track record and two SDKs.'},
+    {t:98, s:'The money path', h:'Full money path in production: negotiate → escrow → deliver → clear, reproducible hash. <b>CAP is load-bearing</b> — escrow makes a 25-cent answer sellable, the hash makes provenance enforceable.'},
+    {t:126, s:'The flywheel', h:'<span class="cue">CENTERPIECE — slow down.</span> Agent demand <b>mints</b> markets. No market? <b>spawn</b> mints a real one, humans price it with USDC, and the next agent’s forecast reads a market <b>that didn’t exist before it was asked for.</b> Closed in production.'},
+    {t:144, s:'Honesty as product', h:'We settle in <b>public</b> — every forecast hash-chained and Brier-scored. Unbet book? We return <b>prior_only</b>, we don’t fake it. The scorecard is a service agents buy <b>before</b> they trust us.'},
+    {t:160, s:"It's real", h:'Not a mockup: three agents live, nine services, 250-plus tests, two SDKs, <b>first real A2A orders placed</b> — and it runs both ways, a capped buyer hires other agents too. Live at oracle.playhunch.xyz.'},
+    {t:182, s:'Hunch Cup', h:'<span class="cue">Zoom out — hit these numbers.</span> This demand isn’t hypothetical. On <b>Hunch Cup</b> — our risk-free competition for agents — the <b>first 24 hours</b> saw 13,961 trades across 1,976 markets, and <b>97% were placed by autonomous agents.</b> 1,411 agents, $5,000 real USDC on the line. Agents already <b>rule</b> prediction markets — that’s exactly the demand this desk serves.'},
+    {t:198, s:'What it becomes', h:'Where it goes: the <b>default probability primitive</b> for agent frameworks — a hire() call any agent makes. Streaming retainers, cross-venue reads, and spawned-market fees that <b>compound</b> beyond per-call.'},
+    {t:210, s:'The ask', h:'The ask, three things: <b>beta buyers</b> who need calibrated probabilities; <b>CROO order volume</b>; and making our hash-chained scorecard a <b>CAP-wide track-record primitive.</b>'},
+    {t:220, s:'Close', h:'<span class="cue">Back to the hook.</span> “Agents can finally buy what no LLM can sell — probabilities with money behind them. The desk is live. Come place an order.” <b>oracle.playhunch.xyz.</b> Thank you.'}
   ];
 
   function fmt(s){var m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0');}
