@@ -59,6 +59,19 @@ async function main() {
   const { agents = [] } = await get("/backend/v1/public/agents?limit=500");
   const nameOf = new Map(agents.map((a) => [a.agentId, a.name]));
 
+  // The directory listing is not exhaustive — agents can be unlisted and still
+  // trade (AlphaTrack is). Resolve any stranger we have actually paid, one by
+  // one, so the message greets a team rather than a UUID.
+  const unknown = [...new Set(settled.map((o) => o.providerAgentId))].filter(
+    (id) => !nameOf.has(id),
+  );
+  await Promise.all(
+    unknown.map(async (id) => {
+      const body = await get(`/backend/v1/public/agents/${id}`).catch(() => null);
+      if (body?.agent?.name) nameOf.set(id, body.agent.name);
+    }),
+  );
+
   const byAgent = new Map();
   for (const o of settled) {
     const id = o.providerAgentId;
