@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SERVICES } from "@/lib/pricing";
+import { AGENT_IDS, SERVICES, agentIdForService } from "@/lib/pricing";
 import { agentIds } from "@/lib/croo";
 
 export const revalidate = 3600;
@@ -26,11 +26,17 @@ export function GET() {
       agents: [
         {
           listing: "Hunch Oracle",
+          agentId: AGENT_IDS["Hunch Oracle"],
           services: ["forecast", "sentiment", "research", "scorecard"],
         },
-        { listing: "Hunch TruthCheck", services: ["verify", "watch"] },
+        {
+          listing: "Hunch TruthCheck",
+          agentId: AGENT_IDS["Hunch TruthCheck"],
+          services: ["verify", "watch"],
+        },
         {
           listing: "Hunch Market Desk",
+          agentId: AGENT_IDS["Hunch Market Desk"],
           services: ["spawn", "hedge-quote", "portfolio-hedge"],
         },
       ],
@@ -38,10 +44,17 @@ export function GET() {
       services: SERVICES.map((s) => ({
         service: s.service,
         listing: s.listing,
+        // The identifier `hire()` actually takes. Without it this catalogue is
+        // a menu with no order numbers.
+        serviceId: s.serviceId,
+        agentId: agentIdForService(s),
         priceUsd: s.priceUsd,
         slaMinutes: s.slaMinutes,
         summary: s.summary,
         exampleRequirements: JSON.parse(s.example) as unknown,
+        hire: {
+          typescript: `await cap.hire({ serviceId: "${s.serviceId}", requirements: ${s.example} })`,
+        },
       })),
       clients: {
         typescript: "npm: @hunchxyz/cap-client (zero-dependency)",

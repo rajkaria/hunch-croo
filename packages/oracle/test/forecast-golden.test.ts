@@ -165,6 +165,70 @@ describe("forecast service end-to-end (mock adapter)", () => {
     expect(hint.input.horizonDays).toBe(30);
   });
 
+  /**
+   * A no_market still costs the buyer $0.25, so it has to carry something they
+   * can act on. Two guarantees: we tell them which tokens DO have a live book,
+   * and any near-miss we surface is priced off the real pool — never a guess.
+   */
+  it("no_market reports live token coverage so the buyer can re-ask", async () => {
+    const payload = await service.handle({
+      order: fakeOrder(),
+      requirements: "",
+      input: { question: "Will $NONEXISTENTCOIN reach $5M market cap in 30 days?" },
+      clock: frozenClock,
+    });
+    expect(payload.status).toBe("no_market");
+    const coverage = payload.coverage as {
+      tokensWithLiveMarkets: string[];
+      askedToken: string | null;
+      askedTokenCovered: boolean | null;
+    };
+    expect(coverage.askedToken).toBe("NONEXISTENTCOIN");
+    expect(coverage.askedTokenCovered).toBe(false);
+    // The fixture catalogue really does book these — a buyer can re-ask now.
+    expect(coverage.tokensWithLiveMarkets).toContain("AIXBT");
+    expect(coverage.tokensWithLiveMarkets).toContain("BTC");
+    expect(coverage.tokensWithLiveMarkets).not.toContain("NONEXISTENTCOIN");
+    // Sorted + deduped: the list is a stable part of the deliverable hash.
+    expect(coverage.tokensWithLiveMarkets).toEqual(
+      [...new Set(coverage.tokensWithLiveMarkets)].sort(),
+    );
+  });
+
+  it("prices every near-miss it surfaces, or marks it unpriced", async () => {
+    const payload = await service.handle({
+      order: fakeOrder(),
+      requirements: "",
+      input: {
+        question: "Will the Federal Reserve cut interest rates in September?",
+      },
+      clock: frozenClock,
+    });
+    expect(payload.status).toBe("no_market");
+    const nearMisses = payload.nearMisses as Array<{
+      marketSlug: string;
+      score: number;
+      threshold: number;
+      priced: boolean;
+      probability?: number | null;
+      poolUsd?: number;
+      confidence?: string;
+    }>;
+    expect(nearMisses.length).toBeGreaterThan(0);
+    for (const miss of nearMisses) {
+      // Every near-miss is below threshold by definition — that is why it is a
+      // near-miss and not the answer.
+      expect(miss.score).toBeLessThan(miss.threshold);
+      if (!miss.priced) continue;
+      expect(typeof miss.poolUsd).toBe("number");
+      expect(miss.confidence).toBeTruthy();
+      if (miss.probability !== null && miss.probability !== undefined) {
+        expect(miss.probability).toBeGreaterThanOrEqual(0);
+        expect(miss.probability).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
   it("answers ladder markets with the full outcome book", async () => {
     const payload = await service.handle({
       order: fakeOrder(),

@@ -25,21 +25,44 @@ Merged to `main` (`a717d1a`). Gate green: typecheck + **269 tests** (260 oracle
 
 ## Current state — what's working, deployed, broken
 
-**🟢 LIVE AND SPENDING (2026-07-15).** All four processes on Railway (project
-**energetic-benevolence** `117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct
-rajkaria98@gmail.com, deploys from `main`). All three sellers log `websocket
-connected`. **The buyer is LIVE and PAYING** (`SIGNAL_BUYER_ENABLED=true`): the
-price-NaN self-reject is FIXED and CONFIRMED on live (main `6a9d06e`) — a real
-loop order paid escrow, `priceUsd: 0.1`, tx `0x68b045eb…`, zero `invalid_price`,
-spend well under the $5/day cap. Two manual hires settled end-to-end (forecast +
-AlphaTrack). Gate green: typecheck + **279 oracle tests**.
+**🔴 BUYER BLOCKED ON AN EMPTY WALLET (2026-07-20).** All four processes are up
+on Railway (project **energetic-benevolence**
+`117ce3e2-ca2e-4b1d-a191-36f3a6d3a442`, acct rajkaria98@gmail.com, deploys from
+`main`) and all three sellers log `websocket connected`. But the buyer has
+created **300+ orders since 2026-07-19T18:25Z and settled ZERO** — every one is
+stuck in `creating`.
+
+**Root cause: the buyer's ERC-4337 smart account is empty.** Not a code bug —
+the create UserOp reverts on-chain every time:
+
+- buyer smart account `0xfb115215ad8cdd36dc5647fd4a4a1e29ad8d95e4`
+- **0 ETH · 0.002034 USDC · 0 EntryPoint deposit**
+- e.g. create tx `0xc5f5b7af…` → EntryPoint v0.7 receipt is `status 0x1` (so it
+  *looks* mined) but the logs carry `UserOperationPrefundTooLow` and
+  `UserOperationEvent.success = false`. The CROO paymaster
+  (`0x2cc0c7981d846b9f2a16276556f6e8cb52bfb633`) holds 1.119 ETH but is not
+  sponsoring these ops, so prefund falls to the sender — which has nothing.
+- `chainOrderId` stays `"0"`, `price`/`payDeadline` stay empty → the order never
+  becomes payable → CROO leaves it `creating` forever.
+
+**A green EntryPoint receipt is NOT proof of settlement.** The earlier
+"buyer LIVE and PAYING, tx `0x68b045eb…`" claim was read off a tx status alone;
+always decode `UserOperationEvent.success` before believing a UserOp landed.
+
+**Unblock = fund `0xfb115215ad8cdd36dc5647fd4a4a1e29ad8d95e4` on Base** with
+USDC (spend) + a little ETH (prefund, unless CROO sponsors gas). At the $5/day
+cap the 17-entry allowlist burns ~$1.52/round. Nothing else is in the way — the
+allowlist, caps and loop are all correctly configured and provably placing
+orders.
+
+Gate green: typecheck + **281 oracle tests** + 9 CAP-client.
 
 | Railway service | Config | Notes |
 |---|---|---|
 | `worker-oracle` | root `railway.json` | volume `/app/data` (ledger); real service UUIDs mapped |
 | `worker-truthcheck` | root `railway.json` | `trackRecord: disabled` — ledger is Oracle's |
 | `worker-marketdesk` | root `railway.json` | hedge caps set; real UUIDs mapped |
-| `buyer` | `railway.buyer.json` | **LIVE + PAYING** (price bug fixed & confirmed on live `6a9d06e`); allowlist = AlphaTrack + Polymind, caps $5/day · $1/order |
+| `buyer` | `railway.buyer.json` | **placing orders, settling none — wallet empty** (see root cause above). Allowlist widened 2026-07-20 to **17 services across 11 counterparty agents**; caps $5/day · $1/order · **$0.60/counterparty/day**; round interval 1h |
 
 **Orders placed (live CROO, real Base USDC):**
 - `forecast` self-hire — **completed**, $0.25 (integration test, NOT traction). Full
@@ -49,10 +72,19 @@ AlphaTrack). Gate green: typecheck + **279 oracle tests**.
 - AlphaTrack `top_traders` external hire — **completed**, $0.10 (paid by hand via
   raw API). Real Binance top-trader leaderboard, on-chain `deliverTxHash`. Proved
   the fiber-extracted service_id is genuine AND that a full external hire settles.
-- **Buyer loop orders all `rejected`** — the loop negotiates and creates orders but
-  its own cap gate rejects each with `invalid_price: NaN` (next-step #1). So the
-  buyer is armed and placing real orders, but **not yet successfully spending**.
-  Cap-safe (no money moves on a reject), but no autonomous traction until fixed.
+- **One genuine external customer.** `scorecard`, $0.01, 2026-07-15, requester
+  agent `ecce23e6-5005-4aa6-b3a3-5381434e9e50` — NOT one of ours, and not in the
+  20-agent public directory (unlisted). The only inbound money to date.
+- **Buyer loop: 300+ orders, 0 settled** — all `creating`, empty wallet (above).
+  The old `invalid_price: NaN` self-reject IS fixed (`6a9d06e`); this is a
+  different, purely financial blocker sitting downstream of it.
+
+**The store is quiet — that is the opportunity.** Full sweep on 2026-07-20:
+20 agents, 43 services, and almost every one shows `orders7d: 0`. The busiest
+listings are SwapGod (5054), AlphaTrack `top_traders` (7075) and Polymind
+(1683); essentially everything else is at zero. A funded buyer clearing ~30-90
+cheap orders/day would make this desk the most active non-swap counterparty on
+the network within a day.
 
 **The two defects that made traction impossible (both fixed this session).**
 Neither showed in the 256-test mock suite; both surfaced on first contact with

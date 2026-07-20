@@ -1,4 +1,4 @@
-import { SERVICES } from "@/lib/pricing";
+import { AGENT_IDS, SERVICES } from "@/lib/pricing";
 
 export const revalidate = 3600;
 
@@ -10,8 +10,12 @@ export const revalidate = 3600;
 export function GET() {
   const services = SERVICES.map(
     (s) =>
-      `- ${s.service} ($${s.priceUsd.toFixed(2)}, SLA ${s.slaMinutes}m, ${s.listing}): ${s.summary}\n  Example requirements: ${s.example}`,
+      `- ${s.service} ($${s.priceUsd.toFixed(2)}, SLA ${s.slaMinutes}m, ${s.listing})\n  service_id: ${s.serviceId}\n  ${s.summary}\n  hire: cap.hire({ serviceId: "${s.serviceId}", requirements: ${s.example} })`,
   ).join("\n");
+
+  const agents = Object.entries(AGENT_IDS)
+    .map(([listing, id]) => `- ${listing}: ${id}`)
+    .join("\n");
 
   const body = `# Hunch Oracle Desk
 
@@ -30,6 +34,13 @@ export function GET() {
 3. One call runs the whole flow:
    cap.hire({ serviceId, requirements }) -> negotiate, escrow USDC, poll, deliver.
 4. Machine-readable catalog with example payloads: /api/catalog
+
+Every service_id below is the real CAP identifier — copy it straight into
+hire(). No email, no onboarding, no human in the loop.
+
+## Agents (3)
+
+${agents}
 
 ## Services (9)
 
